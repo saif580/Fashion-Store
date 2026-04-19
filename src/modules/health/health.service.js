@@ -1,4 +1,4 @@
-const { appEnv } = require("../config/env");
+const { appEnv } = require("../../config/env");
 
 const getStatus = () => {
   return {
@@ -7,6 +7,4 @@ const getStatus = () => {
   };
 };
 
-module.exports = {
-  getStatus,
-};
+module.exports = { getStatus };

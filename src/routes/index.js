@@ -1,8 +1,16 @@
 const express = require("express");
-const homeController = require("../controllers/homeController");
+const healthRoutes = require("../modules/health/health.routes");
+const productRoutes = require("../modules/products/product.routes");
+const orderRoutes = require("../modules/orders/order.routes");
+const userRoutes = require("../modules/users/user.routes");
+const authRoutes = require("../modules/auth/auth.routes");
 
 const router = express.Router();
 
-router.get("/", homeController.getStatus);
+router.use("/health", healthRoutes);
+router.use("/products", productRoutes);
+router.use("/orders", orderRoutes);
+router.use("/users", userRoutes);
+router.use("/auth", authRoutes);
 
 module.exports = router;
