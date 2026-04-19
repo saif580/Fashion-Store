@@ -1,0 +1,24 @@
+{
+  "name": "fashion-store-backend",
+  "version": "1.0.0",
+  "description": "Basic Node.js backend starter",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "cross-env APP_ENV=prod node src/server.js",
+    "dev": "cross-env APP_ENV=dev nodemon src/server.js",
+    "start:dev": "cross-env APP_ENV=dev node src/server.js",
+    "start:uat": "cross-env APP_ENV=uat node src/server.js",
+    "start:prod": "cross-env APP_ENV=prod node src/server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "nodemon": "^3.1.10"
+  }
+}
