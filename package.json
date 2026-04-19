@@ -8,14 +8,22 @@
     "dev": "cross-env APP_ENV=dev nodemon src/server.js",
     "start:dev": "cross-env APP_ENV=dev node src/server.js",
     "start:uat": "cross-env APP_ENV=uat node src/server.js",
-    "start:prod": "cross-env APP_ENV=prod node src/server.js"
+    "start:prod": "cross-env APP_ENV=prod node src/server.js",
+    "export:openapi": "node scripts/export-openapi.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "bcryptjs": "^2.4.3",
     "dotenv": "^16.6.1",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.3.2",
+    "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^8.0.5",
+    "pg": "^8.16.3",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "cross-env": "^7.0.3",

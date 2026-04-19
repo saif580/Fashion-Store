@@ -1,5 +1,14 @@
 const userRepository = require("./user.repository");
+const { createHttpError } = require("../../utils/httpError");
 
-// Business logic for users will go here
+const getProfile = async (userId) => {
+  const user = await userRepository.findById(userId);
 
-module.exports = {};
+  if (!user) {
+    throw createHttpError(404, "User not found");
+  }
+
+  return user;
+};
+
+module.exports = { getProfile };
