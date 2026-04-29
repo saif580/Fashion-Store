@@ -23,9 +23,9 @@
 
 ## Users
 
-- [ ] Add customer profile update API
-- [ ] Add address module for shipping and billing addresses
-- [ ] Add default address selection
+- [x] Add customer profile update API
+- [x] Add address module for shipping and billing addresses
+- [x] Add default address selection
 
 ## Catalog
 

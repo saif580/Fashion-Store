@@ -420,6 +420,90 @@
             "description": "Missing or invalid token"
           }
         }
+      },
+      "put": {
+        "summary": "Update the logged-in user's profile",
+        "tags": [
+          "Users"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Profile updated successfully"
+          }
+        }
+      }
+    },
+    "/api/users/addresses": {
+      "get": {
+        "summary": "List the logged-in user's saved addresses",
+        "tags": [
+          "Users"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of addresses"
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a new address for the logged-in user",
+        "tags": [
+          "Users"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Address created successfully"
+          }
+        }
+      }
+    },
+    "/api/users/addresses/{addressId}": {
+      "put": {
+        "summary": "Update an existing address for the logged-in user",
+        "tags": [
+          "Users"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Address updated successfully"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete an address for the logged-in user",
+        "tags": [
+          "Users"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Address deleted successfully"
+          }
+        }
       }
     },
     "/api/users/admin/access": {
