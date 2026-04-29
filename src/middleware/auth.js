@@ -18,4 +18,16 @@ const requireAuth = (req, res, next) => {
   }
 };
 
-module.exports = { requireAuth };
+const requireRole = (...allowedRoles) => (req, res, next) => {
+  if (!req.user) {
+    return next(createHttpError(401, "Authentication is required"));
+  }
+
+  if (!allowedRoles.includes(req.user.role)) {
+    return next(createHttpError(403, "You do not have permission to access this resource"));
+  }
+
+  next();
+};
+
+module.exports = { requireAuth, requireRole };

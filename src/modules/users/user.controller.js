@@ -10,4 +10,15 @@ const getProfile = async (req, res, next) => {
   }
 };
 
-module.exports = { getProfile };
+const getAdminAccess = async (req, res, next) => {
+  try {
+    sendSuccess(res, {
+      message: "Admin access granted",
+      user: req.user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { getProfile, getAdminAccess };

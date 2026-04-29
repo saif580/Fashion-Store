@@ -17,7 +17,7 @@
 - [x] Add resend verification email flow
 - [x] Fix one-active-verification-token persistence rule
 - [ ] Decide final password policy for production
-- [ ] Add role-based authorization middleware
+- [x] Add role-based authorization middleware
 - [ ] Decide whether refresh tokens should be hashed in the database
 - [ ] Add auth audit logging for sensitive events
 
