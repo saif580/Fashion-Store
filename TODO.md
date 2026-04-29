@@ -29,11 +29,11 @@
 
 ## Catalog
 
-- [ ] Create categories module
-- [ ] Create products module
-- [ ] Add product variants
-- [ ] Add product images support
-- [ ] Add product attributes like size and color
+- [x] Create categories module
+- [x] Create products module
+- [x] Add product variants
+- [x] Add product images support
+- [x] Add product attributes like size and color
 - [ ] Add product search and filters
 
 ## Cart And Orders

@@ -369,6 +369,67 @@
         }
       }
     },
+    "/api/categories": {
+      "get": {
+        "summary": "List categories",
+        "tags": [
+          "Categories"
+        ],
+        "responses": {
+          "200": {
+            "description": "Categories fetched successfully"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a category",
+        "tags": [
+          "Categories"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Category created successfully"
+          }
+        }
+      }
+    },
+    "/api/categories/{categoryId}": {
+      "get": {
+        "summary": "Get one category",
+        "tags": [
+          "Categories"
+        ],
+        "responses": {
+          "200": {
+            "description": "Category fetched successfully"
+          },
+          "404": {
+            "description": "Category not found"
+          }
+        }
+      },
+      "put": {
+        "summary": "Update a category",
+        "tags": [
+          "Categories"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Category updated successfully"
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "summary": "Check API health",
@@ -397,6 +458,67 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/products": {
+      "get": {
+        "summary": "List products with category, variants, images, and attributes",
+        "tags": [
+          "Products"
+        ],
+        "responses": {
+          "200": {
+            "description": "Products fetched successfully"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a product with variants, images, and attributes",
+        "tags": [
+          "Products"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Product created successfully"
+          }
+        }
+      }
+    },
+    "/api/products/{productId}": {
+      "get": {
+        "summary": "Get one product with variants, images, and attributes",
+        "tags": [
+          "Products"
+        ],
+        "responses": {
+          "200": {
+            "description": "Product fetched successfully"
+          },
+          "404": {
+            "description": "Product not found"
+          }
+        }
+      },
+      "put": {
+        "summary": "Update a product with variants, images, and attributes",
+        "tags": [
+          "Products"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product updated successfully"
           }
         }
       }

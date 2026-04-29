@@ -137,6 +137,109 @@ const initializeDatabase = async () => {
       END IF;
     END $$;
   `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS categories (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(120) NOT NULL,
+      slug VARCHAR(140) UNIQUE NOT NULL,
+      description TEXT,
+      parent_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+      image_url TEXT,
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await query(`
+    DO $$ BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger WHERE tgname = 'trg_categories_updated_at'
+      ) THEN
+        CREATE TRIGGER trg_categories_updated_at
+        BEFORE UPDATE ON categories
+        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+      END IF;
+    END $$;
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS products (
+      id SERIAL PRIMARY KEY,
+      category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE RESTRICT,
+      name VARCHAR(180) NOT NULL,
+      slug VARCHAR(200) UNIQUE NOT NULL,
+      description TEXT,
+      base_price NUMERIC(12,2) NOT NULL,
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await query(`
+    DO $$ BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger WHERE tgname = 'trg_products_updated_at'
+      ) THEN
+        CREATE TRIGGER trg_products_updated_at
+        BEFORE UPDATE ON products
+        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+      END IF;
+    END $$;
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS product_variants (
+      id SERIAL PRIMARY KEY,
+      product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+      sku VARCHAR(120) UNIQUE NOT NULL,
+      color VARCHAR(80) NOT NULL,
+      size VARCHAR(80) NOT NULL,
+      material VARCHAR(120),
+      price NUMERIC(12,2) NOT NULL,
+      compare_at_price NUMERIC(12,2),
+      inventory_quantity INTEGER NOT NULL DEFAULT 0,
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await query(`
+    DO $$ BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger WHERE tgname = 'trg_product_variants_updated_at'
+      ) THEN
+        CREATE TRIGGER trg_product_variants_updated_at
+        BEFORE UPDATE ON product_variants
+        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+      END IF;
+    END $$;
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS product_images (
+      id SERIAL PRIMARY KEY,
+      product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+      variant_id INTEGER REFERENCES product_variants(id) ON DELETE SET NULL,
+      image_url TEXT NOT NULL,
+      alt_text VARCHAR(255),
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS product_attributes (
+      id SERIAL PRIMARY KEY,
+      product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+      name VARCHAR(100) NOT NULL,
+      value VARCHAR(255) NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
 };
 
 module.exports = {
