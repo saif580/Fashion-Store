@@ -4,7 +4,8 @@ const jwt = require("jsonwebtoken");
 const userRepository = require("../users/user.repository");
 const authRepository = require("./auth.repository");
 const { sendMail } = require("../../utils/email");
-const { jwtSecret, jwtExpiresIn, jwtRefreshSecret, jwtRefreshExpiresIn, appBaseUrl } = require("../../config/env");
+const { verifyEmailTemplate, resetPasswordTemplate, welcomeTemplate } = require("../../utils/emailTemplates");
+const { jwtSecret, jwtExpiresIn, jwtRefreshSecret, jwtRefreshExpiresIn, frontendUrl } = require("../../config/env");
 const { createHttpError } = require("../../utils/httpError");
 
 const sanitizeUser = (user) => ({
@@ -30,10 +31,26 @@ const signAccessToken = (user) =>
 
 const signRefreshToken = (user) =>
   jwt.sign(
-    { id: user.id },
+    { id: user.id, jti: crypto.randomUUID() },
     jwtRefreshSecret,
     { expiresIn: jwtRefreshExpiresIn },
   );
+
+
+const issueVerificationToken = async (user) => {
+  const verifyToken = crypto.randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  await authRepository.saveEmailVerificationToken(user.id, verifyToken, expiresAt);
+
+  await sendMail({
+    to: user.email,
+    subject: "Verify your email address – Fashion Store",
+    html: verifyEmailTemplate({
+      firstName: user.first_name,
+      verifyUrl: `${frontendUrl}/verify-email?token=${verifyToken}`,
+    }),
+  });
+};
 
 const register = async ({ firstName, lastName, email, phone, password, isMarketingOptIn }) => {
   const normalizedEmail = email.trim().toLowerCase();
@@ -52,17 +69,7 @@ const register = async ({ firstName, lastName, email, phone, password, isMarketi
     isMarketingOptIn: Boolean(isMarketingOptIn),
   });
 
-  const verifyToken = crypto.randomBytes(32).toString("hex");
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-  await authRepository.saveEmailVerificationToken(user.id, verifyToken, expiresAt);
-
-  await sendMail({
-    to: user.email,
-    subject: "Verify your email – Fashion Store",
-    html: `<p>Hi ${user.first_name},</p>
-           <p>Click the link below to verify your email. It expires in 24 hours.</p>
-           <a href="${appBaseUrl}/api/auth/verify-email?token=${verifyToken}">Verify Email</a>`,
-  });
+  await issueVerificationToken(user);
 
   return { user: sanitizeUser(user) };
 };
@@ -101,7 +108,15 @@ const refresh = async (token) => {
   if (!user) throw createHttpError(401, "User not found");
 
   const accessToken = signAccessToken(user);
-  return { accessToken };
+  const refreshToken = signRefreshToken(user);
+  const refreshExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  const rotated = await authRepository.replaceRefreshToken(token, refreshToken, refreshExpiresAt);
+
+  if (!rotated) {
+    throw createHttpError(401, "Invalid or expired refresh token");
+  }
+
+  return { accessToken, refreshToken };
 };
 
 const logout = async (token) => {
@@ -114,6 +129,26 @@ const verifyEmail = async (token) => {
 
   await userRepository.markEmailVerified(record.user_id);
   await authRepository.deleteEmailVerificationToken(token);
+
+  const user = await userRepository.findById(record.user_id);
+  if (user) {
+    await sendMail({
+      to: user.email,
+      subject: "Welcome to Fashion Store!",
+      html: welcomeTemplate({ firstName: user.first_name }),
+    });
+  }
+};
+
+const resendVerificationEmail = async (email) => {
+  const normalizedEmail = email.trim().toLowerCase();
+  const user = await userRepository.findByEmail(normalizedEmail);
+
+  if (!user || user.is_email_verified) {
+    return;
+  }
+
+  await issueVerificationToken(user);
 };
 
 const forgotPassword = async (email) => {
@@ -129,10 +164,10 @@ const forgotPassword = async (email) => {
   await sendMail({
     to: user.email,
     subject: "Reset your password – Fashion Store",
-    html: `<p>Hi ${user.first_name},</p>
-           <p>Click the link below to reset your password. It expires in 1 hour.</p>
-           <a href="${appBaseUrl}/reset-password?token=${resetToken}">Reset Password</a>
-           <p>If you didn't request this, ignore this email.</p>`,
+    html: resetPasswordTemplate({
+      firstName: user.first_name,
+      resetUrl: `${frontendUrl}/reset-password?token=${resetToken}`,
+    }),
   });
 };
 
@@ -146,4 +181,13 @@ const resetPassword = async (token, newPassword) => {
   await authRepository.deleteAllRefreshTokens(record.user_id);
 };
 
-module.exports = { register, login, refresh, logout, verifyEmail, forgotPassword, resetPassword };
+module.exports = {
+  register,
+  login,
+  refresh,
+  logout,
+  verifyEmail,
+  resendVerificationEmail,
+  forgotPassword,
+  resetPassword,
+};

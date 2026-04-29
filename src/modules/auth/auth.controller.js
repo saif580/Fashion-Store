@@ -73,6 +73,18 @@ const verifyEmail = async (req, res, next) => {
   }
 };
 
+const resendVerificationEmail = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    if (!email?.trim()) throw createHttpError(400, "Email is required");
+    if (!emailPattern.test(email.trim().toLowerCase())) throw createHttpError(400, "Email format is invalid");
+    await authService.resendVerificationEmail(email);
+    sendSuccess(res, { message: "If the account exists and is unverified, a new verification email has been sent" });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const forgotPassword = async (req, res, next) => {
   try {
     const { email } = req.body;
@@ -98,4 +110,13 @@ const resetPassword = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, refresh, logout, verifyEmail, forgotPassword, resetPassword };
+module.exports = {
+  register,
+  login,
+  refresh,
+  logout,
+  verifyEmail,
+  resendVerificationEmail,
+  forgotPassword,
+  resetPassword,
+};

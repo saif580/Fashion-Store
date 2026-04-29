@@ -14,6 +14,7 @@ module.exports = {
   appEnv,
   port: process.env.PORT || 3000,
   appBaseUrl: process.env.APP_BASE_URL || "http://localhost:3000",
+  frontendUrl: process.env.FRONTEND_URL || "http://localhost:3000",
   dbHost: process.env.DB_HOST || "127.0.0.1",
   dbPort: Number(process.env.DB_PORT) || 5432,
   dbName: process.env.DB_NAME || "fashion_store",

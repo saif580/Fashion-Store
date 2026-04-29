@@ -73,8 +73,22 @@ const initializeDatabase = async () => {
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       token TEXT UNIQUE NOT NULL,
       expires_at TIMESTAMPTZ NOT NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      CONSTRAINT email_verifications_user_id_key UNIQUE (user_id)
     );
+  `);
+
+  await query(`
+    DO $$ BEGIN
+      IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'email_verifications_user_id_key'
+      ) THEN
+        ALTER TABLE email_verifications
+        ADD CONSTRAINT email_verifications_user_id_key UNIQUE (user_id);
+      END IF;
+    END $$;
   `);
 
   await query(`

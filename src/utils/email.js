@@ -1,12 +1,17 @@
 const nodemailer = require("nodemailer");
 const { emailHost, emailPort, emailUser, emailPass, emailFrom } = require("../config/env");
 
-const transporter = nodemailer.createTransport({
+const transportConfig = {
   host: emailHost,
   port: emailPort,
   secure: emailPort === 465,
-  auth: { user: emailUser, pass: emailPass },
-});
+};
+
+if (emailUser && emailPass) {
+  transportConfig.auth = { user: emailUser, pass: emailPass };
+}
+
+const transporter = nodemailer.createTransport(transportConfig);
 
 const sendMail = ({ to, subject, html }) =>
   transporter.sendMail({ from: emailFrom, to, subject, html });

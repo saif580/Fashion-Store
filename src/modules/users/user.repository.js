@@ -30,6 +30,7 @@ const createUser = async ({
       email,
       phone,
       role,
+      is_email_verified,
       is_marketing_opt_in,
       created_at,
       updated_at;
@@ -59,6 +60,7 @@ const findByEmail = async (email) => {
         email,
         phone,
         role,
+        is_email_verified,
         is_marketing_opt_in,
         password_hash,
         created_at,
@@ -83,6 +85,7 @@ const findById = async (id) => {
         email,
         phone,
         role,
+        is_email_verified,
         is_marketing_opt_in,
         created_at,
         updated_at

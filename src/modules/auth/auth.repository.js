@@ -19,6 +19,20 @@ const deleteRefreshToken = async (token) => {
   await query(`DELETE FROM refresh_tokens WHERE token = $1`, [token]);
 };
 
+const replaceRefreshToken = async (oldToken, newToken, expiresAt) => {
+  const { rows } = await query(
+    `
+      UPDATE refresh_tokens
+      SET token = $2, expires_at = $3, created_at = NOW()
+      WHERE token = $1
+      RETURNING *;
+    `,
+    [oldToken, newToken, expiresAt],
+  );
+
+  return rows[0] || null;
+};
+
 const deleteAllRefreshTokens = async (userId) => {
   await query(`DELETE FROM refresh_tokens WHERE user_id = $1`, [userId]);
 };
@@ -27,7 +41,8 @@ const saveEmailVerificationToken = async (userId, token, expiresAt) => {
   await query(
     `INSERT INTO email_verifications (user_id, token, expires_at)
      VALUES ($1, $2, $3)
-     ON CONFLICT DO NOTHING`,
+     ON CONFLICT (user_id)
+     DO UPDATE SET token = EXCLUDED.token, expires_at = EXCLUDED.expires_at, created_at = NOW()`,
     [userId, token, expiresAt],
   );
 };
@@ -74,6 +89,7 @@ module.exports = {
   saveRefreshToken,
   findRefreshToken,
   deleteRefreshToken,
+  replaceRefreshToken,
   deleteAllRefreshTokens,
   saveEmailVerificationToken,
   findEmailVerificationToken,
