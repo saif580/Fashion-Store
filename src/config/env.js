@@ -30,4 +30,7 @@ module.exports = {
   emailUser: process.env.EMAIL_USER || "",
   emailPass: process.env.EMAIL_PASS || "",
   emailFrom: process.env.EMAIL_FROM || "no-reply@fashionstore.com",
+  cloudinaryCloudName: require_env("CLOUDINARY_CLOUD_NAME"),
+  cloudinaryApiKey: require_env("CLOUDINARY_API_KEY"),
+  cloudinaryApiSecret: require_env("CLOUDINARY_API_SECRET"),
 };
