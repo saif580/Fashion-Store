@@ -1,19 +1,9 @@
 const { Pool } = require("pg");
-const {
-  dbHost,
-  dbPort,
-  dbName,
-  dbUser,
-  dbPassword,
-} = require("./env");
+const { databaseUrl, dbHost, dbPort, dbName, dbUser, dbPassword } = require("./env");
 
-const pool = new Pool({
-  host: dbHost,
-  port: dbPort,
-  database: dbName,
-  user: dbUser,
-  password: dbPassword || undefined,
-});
+const pool = databaseUrl
+  ? new Pool({ connectionString: databaseUrl, ssl: { rejectUnauthorized: false } })
+  : new Pool({ host: dbHost, port: dbPort, database: dbName, user: dbUser, password: dbPassword || undefined });
 
 const query = (text, params) => pool.query(text, params);
 
