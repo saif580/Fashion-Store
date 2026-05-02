@@ -1,70 +1,117 @@
 # TODO
 
-## Immediate
+## Infrastructure & Setup
 
-- [x] Finalize `dev` email settings to use Mailpit
-- [x] Verify Mailpit email delivery for verification and reset-password flows
+- [x] Set up PostgreSQL with auto-initializing schema
+- [x] Connect to Supabase (dev + uat)
+- [x] Multi-environment config (dev, uat, prod)
+- [x] Cloudinary integration for image and video uploads
+- [x] Swagger/OpenAPI documentation
+- [x] Global error handler and 404 handler
+- [x] Rate limiting middleware
 - [ ] Decide whether `uat` will use sandbox SMTP or real SMTP
-- [x] Verify all auth endpoints end-to-end after env changes
 - [ ] Add `.env` documentation for required variables
 
 ## Auth
 
-- [x] Add refresh token flow verification
-- [x] Add logout token invalidation verification
-- [x] Add email verification flow end-to-end
-- [x] Add forgot-password and reset-password end-to-end flow
-- [x] Add resend verification email flow
+- [x] Register with email verification
+- [x] Login with JWT access + refresh token
+- [x] Refresh token flow
+- [x] Logout with token invalidation
+- [x] Email verification end-to-end
+- [x] Resend verification email
+- [x] Forgot password and reset password flow
 - [x] Fix one-active-verification-token persistence rule
+- [x] Role-based authorization middleware
 - [ ] Decide final password policy for production
-- [x] Add role-based authorization middleware
 - [ ] Decide whether refresh tokens should be hashed in the database
 - [ ] Add auth audit logging for sensitive events
 
 ## Users
 
-- [x] Add customer profile update API
-- [x] Add address module for shipping and billing addresses
-- [x] Add default address selection
+- [x] Get and update customer profile
+- [x] Address management (create, update, delete)
+- [x] Default shipping and billing address selection
 
 ## Catalog
 
-- [x] Create categories module
-- [x] Create products module
-- [x] Add product variants
-- [x] Add product images support
-- [x] Add product attributes like size and color
-- [ ] Add product search and filters
+- [x] Categories module with parent-child support
+- [x] Products module with pagination
+- [x] Product variants (SKU, size, color, material, price, compare_at_price)
+- [x] Product images support
+- [x] Product attributes (generic key-value)
+- [ ] Wire Cloudinary upload into product image endpoints
+- [ ] Add product search (full-text)
+- [ ] Add product filters (price, size, color, category)
+- [ ] Add sort options (price, newest, popularity)
 
-## Cart And Orders
+## Cart
 
-- [ ] Create cart module
-- [ ] Create cart items module
-- [ ] Create orders module
-- [ ] Create order items module
-- [ ] Add order status flow
+- [ ] Create cart table in database
+- [ ] Create cart items table
+- [ ] POST /api/cart/items — add item to cart
+- [ ] GET /api/cart — get current user's cart
+- [ ] PUT /api/cart/items/:id — update quantity
+- [ ] DELETE /api/cart/items/:id — remove item
+- [ ] DELETE /api/cart — clear cart
+- [ ] Handle out-of-stock validation on add
 
-## Inventory And Pricing
+## Orders
 
-- [ ] Add inventory tracking
-- [ ] Add stock reservation strategy
-- [ ] Add coupon and discount support
+- [ ] Create orders table
+- [ ] Create order_items table
+- [ ] POST /api/orders — place order from cart
+- [ ] GET /api/orders — list user's orders
+- [ ] GET /api/orders/:id — get order details
+- [ ] Add order status flow (pending → confirmed → shipped → delivered → cancelled)
+- [ ] Send order confirmation email
+
+## Inventory
+
+- [ ] Add inventory tracking on order placement
+- [ ] Add stock reservation strategy during checkout
+- [ ] Handle oversell prevention
+- [ ] Low stock warnings for admin
 
 ## Payments
 
-- [ ] Choose payment provider
+- [ ] Choose payment provider (Stripe recommended)
 - [ ] Add payment initiation API
 - [ ] Add payment callback/webhook handling
-- [ ] Add payment status persistence
+- [ ] Add payment status persistence (orders_payments table)
+- [ ] Handle payment failure and retry
+
+## Coupons & Discounts
+
+- [ ] Create coupons table
+- [ ] POST /api/cart/coupon — apply coupon
+- [ ] Discount calculation logic (percentage, fixed, free shipping)
+- [ ] Coupon expiry and usage limits
+
+## Wishlist
+
+- [ ] Create wishlist table
+- [ ] POST /api/wishlist — add product
+- [ ] GET /api/wishlist — get user's wishlist
+- [ ] DELETE /api/wishlist/:id — remove item
+
+## Reviews & Ratings
+
+- [ ] Create product_reviews table
+- [ ] POST /api/products/:id/reviews — submit review
+- [ ] GET /api/products/:id/reviews — list reviews
+- [ ] Average rating on product listing
 
 ## Admin
 
-- [ ] Add admin-only product management APIs
-- [ ] Add admin-only order management APIs
-- [ ] Add admin-only user management APIs
+- [ ] Admin product management (create, update, delete, bulk)
+- [ ] Admin category management (delete)
+- [ ] Admin order management (view all, update status)
+- [ ] Admin user management (list, edit role, deactivate)
+- [ ] Sales and inventory reports
 
 ## Documentation
 
 - [ ] Keep Swagger docs updated for every new API
 - [ ] Re-export `docs/openapi.json` after API changes
-- [ ] Add a project `README.md`
+- [ ] Add `.env.example` file with all required variables
