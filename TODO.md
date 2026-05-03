@@ -58,13 +58,13 @@
 
 ## Orders
 
-- [ ] Create orders table
-- [ ] Create order_items table
-- [ ] POST /api/orders — place order from cart
-- [ ] GET /api/orders — list user's orders
-- [ ] GET /api/orders/:id — get order details
-- [ ] Add order status flow (pending → confirmed → shipped → delivered → cancelled)
-- [ ] Send order confirmation email
+- [x] Create orders table
+- [x] Create order_items table
+- [x] POST /api/orders — place order from cart
+- [x] GET /api/orders — list user's orders
+- [x] GET /api/orders/:id — get order details
+- [x] Add order status flow (pending → confirmed → shipped → delivered → cancelled)
+- [x] Send order confirmation email
 
 ## Inventory
 

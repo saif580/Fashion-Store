@@ -341,6 +341,73 @@ const initializeDatabase = async () => {
     CREATE INDEX IF NOT EXISTS idx_cart_items_variant_id
     ON cart_items (variant_id);
   `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS orders (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+      order_number VARCHAR(40) NOT NULL UNIQUE,
+      status VARCHAR(30) NOT NULL DEFAULT 'pending',
+      subtotal NUMERIC(12,2) NOT NULL,
+      shipping_full_name VARCHAR(120) NOT NULL,
+      shipping_phone VARCHAR(30) NOT NULL,
+      shipping_address_line_1 VARCHAR(255) NOT NULL,
+      shipping_address_line_2 VARCHAR(255),
+      shipping_city VARCHAR(120) NOT NULL,
+      shipping_state VARCHAR(120) NOT NULL,
+      shipping_postal_code VARCHAR(30) NOT NULL,
+      shipping_country VARCHAR(120) NOT NULL,
+      placed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await query(`
+    DO $$ BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger WHERE tgname = 'trg_orders_updated_at'
+      ) THEN
+        CREATE TRIGGER trg_orders_updated_at
+        BEFORE UPDATE ON orders
+        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+      END IF;
+    END $$;
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS order_items (
+      id SERIAL PRIMARY KEY,
+      order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+      product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
+      variant_id INTEGER REFERENCES product_variants(id) ON DELETE SET NULL,
+      product_name VARCHAR(180) NOT NULL,
+      product_slug VARCHAR(200) NOT NULL,
+      variant_sku VARCHAR(120) NOT NULL,
+      variant_color VARCHAR(80) NOT NULL,
+      variant_size VARCHAR(80) NOT NULL,
+      variant_material VARCHAR(120),
+      quantity INTEGER NOT NULL CHECK (quantity > 0),
+      unit_price NUMERIC(12,2) NOT NULL,
+      line_total NUMERIC(12,2) NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_orders_user_id
+    ON orders (user_id, created_at DESC);
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_orders_status
+    ON orders (status, created_at DESC);
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_order_items_order_id
+    ON order_items (order_id);
+  `);
 };
 
 module.exports = {
