@@ -151,10 +151,37 @@ const getCartItemsForCheckout = async (userId, client) => {
 
 const generateOrderNumber = () => `ORD-${Date.now()}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
 
+const expireReservations = async (client) => {
+  await client.query(
+    `
+      UPDATE inventory_reservations
+      SET status = 'expired', released_at = NOW()
+      WHERE status = 'active' AND expires_at <= NOW();
+    `,
+  );
+};
+
+const getActiveReservedQuantity = async (client, variantId, excludingUserId = null) => {
+  const { rows } = await client.query(
+    `
+      SELECT COALESCE(SUM(quantity), 0)::int AS reserved_quantity
+      FROM inventory_reservations
+      WHERE variant_id = $1
+        AND status = 'active'
+        AND expires_at > NOW()
+        AND ($2::int IS NULL OR user_id != $2);
+    `,
+    [variantId, excludingUserId],
+  );
+
+  return rows[0]?.reserved_quantity || 0;
+};
+
 const createOrderFromCart = async ({ userId, shippingAddress }) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
+    await expireReservations(client);
 
     const cartItems = await getCartItemsForCheckout(userId, client);
     if (cartItems.length === 0) {
@@ -163,14 +190,17 @@ const createOrderFromCart = async ({ userId, shippingAddress }) => {
     }
 
     for (const item of cartItems) {
+      const reservedByOthers = await getActiveReservedQuantity(client, item.variant_id, userId);
+      const availableForCheckout = item.inventory_quantity - reservedByOthers;
+
       if (!item.product_is_active || !item.variant_is_active) {
         const error = new Error("One or more cart items are no longer available");
         error.status = 400;
         throw error;
       }
 
-      if (item.inventory_quantity < item.quantity) {
-        const error = new Error(`Only ${item.inventory_quantity} item(s) are available for SKU ${item.sku}`);
+      if (availableForCheckout < item.quantity) {
+        const error = new Error(`Only ${Math.max(availableForCheckout, 0)} item(s) are available for SKU ${item.sku}`);
         error.status = 400;
         throw error;
       }
@@ -216,6 +246,24 @@ const createOrderFromCart = async ({ userId, shippingAddress }) => {
     for (const item of cartItems) {
       const unitPrice = Number(item.price);
       const lineTotal = unitPrice * item.quantity;
+      const quantityBefore = item.inventory_quantity;
+      const quantityAfter = quantityBefore - item.quantity;
+
+      const { rows: [reservation] } = await client.query(
+        `
+          INSERT INTO inventory_reservations (
+            user_id,
+            variant_id,
+            order_id,
+            quantity,
+            status,
+            expires_at
+          )
+          VALUES ($1,$2,$3,$4,'confirmed', NOW() + INTERVAL '15 minutes')
+          RETURNING id;
+        `,
+        [userId, item.variant_id, order.id, item.quantity],
+      );
 
       await client.query(
         `
@@ -258,6 +306,31 @@ const createOrderFromCart = async ({ userId, shippingAddress }) => {
           WHERE id = $1;
         `,
         [item.variant_id, item.quantity],
+      );
+
+      await client.query(
+        `
+          INSERT INTO inventory_transactions (
+            variant_id,
+            order_id,
+            reservation_id,
+            transaction_type,
+            quantity_delta,
+            quantity_before,
+            quantity_after,
+            notes
+          )
+          VALUES ($1,$2,$3,'order_placed',$4,$5,$6,$7);
+        `,
+        [
+          item.variant_id,
+          order.id,
+          reservation.id,
+          -item.quantity,
+          quantityBefore,
+          quantityAfter,
+          `Order ${order.order_number} placed`,
+        ],
       );
     }
 

@@ -197,10 +197,16 @@ const initializeDatabase = async () => {
       price NUMERIC(12,2) NOT NULL,
       compare_at_price NUMERIC(12,2),
       inventory_quantity INTEGER NOT NULL DEFAULT 0,
+      low_stock_threshold INTEGER NOT NULL DEFAULT 5,
       is_active BOOLEAN NOT NULL DEFAULT TRUE,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+  `);
+
+  await query(`
+    ALTER TABLE product_variants
+    ADD COLUMN IF NOT EXISTS low_stock_threshold INTEGER NOT NULL DEFAULT 5;
   `);
 
   await query(`
@@ -407,6 +413,50 @@ const initializeDatabase = async () => {
   await query(`
     CREATE INDEX IF NOT EXISTS idx_order_items_order_id
     ON order_items (order_id);
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS inventory_reservations (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      variant_id INTEGER NOT NULL REFERENCES product_variants(id) ON DELETE CASCADE,
+      order_id INTEGER REFERENCES orders(id) ON DELETE SET NULL,
+      quantity INTEGER NOT NULL CHECK (quantity > 0),
+      status VARCHAR(20) NOT NULL DEFAULT 'active',
+      expires_at TIMESTAMPTZ NOT NULL,
+      released_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_inventory_reservations_variant_status
+    ON inventory_reservations (variant_id, status, expires_at);
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_inventory_reservations_user_status
+    ON inventory_reservations (user_id, status, expires_at);
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS inventory_transactions (
+      id SERIAL PRIMARY KEY,
+      variant_id INTEGER NOT NULL REFERENCES product_variants(id) ON DELETE CASCADE,
+      order_id INTEGER REFERENCES orders(id) ON DELETE SET NULL,
+      reservation_id INTEGER REFERENCES inventory_reservations(id) ON DELETE SET NULL,
+      transaction_type VARCHAR(40) NOT NULL,
+      quantity_delta INTEGER NOT NULL,
+      quantity_before INTEGER NOT NULL,
+      quantity_after INTEGER NOT NULL,
+      notes TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_inventory_transactions_variant_id
+    ON inventory_transactions (variant_id, created_at DESC);
   `);
 };
 

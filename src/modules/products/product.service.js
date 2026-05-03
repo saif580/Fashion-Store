@@ -21,6 +21,13 @@ const normalizeVariant = (variant) => {
     throw createHttpError(400, "Each variant must have a valid price");
   }
 
+  if (
+    variant.lowStockThreshold !== undefined
+    && (!Number.isInteger(Number(variant.lowStockThreshold)) || Number(variant.lowStockThreshold) < 0)
+  ) {
+    throw createHttpError(400, "Each variant lowStockThreshold must be a non-negative integer");
+  }
+
   return {
     sku: variant.sku.trim(),
     color: variant.color.trim(),
@@ -29,6 +36,7 @@ const normalizeVariant = (variant) => {
     price: Number(variant.price),
     compareAtPrice: variant.compareAtPrice === undefined || variant.compareAtPrice === null ? null : Number(variant.compareAtPrice),
     inventoryQuantity: Number.isInteger(Number(variant.inventoryQuantity)) ? Number(variant.inventoryQuantity) : 0,
+    lowStockThreshold: Number.isInteger(Number(variant.lowStockThreshold)) ? Number(variant.lowStockThreshold) : 5,
     isActive: variant.isActive !== false,
   };
 };

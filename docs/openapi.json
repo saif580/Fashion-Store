@@ -548,6 +548,42 @@
         }
       }
     },
+    "/api/inventory/reservations/checkout": {
+      "post": {
+        "summary": "Reserve the logged-in user's cart inventory for checkout",
+        "tags": [
+          "Inventory"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Inventory reserved successfully"
+          }
+        }
+      }
+    },
+    "/api/inventory/low-stock": {
+      "get": {
+        "summary": "List low-stock product variants for admin monitoring",
+        "tags": [
+          "Inventory"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Low-stock variants fetched successfully"
+          }
+        }
+      }
+    },
     "/api/orders": {
       "post": {
         "summary": "Place an order from the logged-in user's cart",

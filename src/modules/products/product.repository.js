@@ -26,6 +26,7 @@ const mapVariants = (variants) =>
     price: Number(variant.price),
     compare_at_price: variant.compare_at_price === null ? null : Number(variant.compare_at_price),
     inventory_quantity: variant.inventory_quantity,
+    low_stock_threshold: variant.low_stock_threshold,
     is_active: variant.is_active,
     created_at: variant.created_at,
     updated_at: variant.updated_at,
@@ -39,7 +40,7 @@ const mapProducts = async (products) => {
   const [variantsResult, imagesResult, attributesResult] = await Promise.all([
     query(
       `SELECT id, product_id, sku, color, size, material, price, compare_at_price,
-              inventory_quantity, is_active, created_at, updated_at
+              inventory_quantity, low_stock_threshold, is_active, created_at, updated_at
        FROM product_variants WHERE product_id = ANY($1::int[]) ORDER BY id ASC`,
       [productIds],
     ),
@@ -344,10 +345,10 @@ const createProduct = async ({ categoryId, name, slug, description, basePrice, p
     const variantIdsBySku = new Map();
     for (const variant of variants) {
       const { rows: [createdVariant] } = await client.query(
-        `INSERT INTO product_variants (product_id, sku, color, size, material, price, compare_at_price, inventory_quantity, is_active)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+        `INSERT INTO product_variants (product_id, sku, color, size, material, price, compare_at_price, inventory_quantity, low_stock_threshold, is_active)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
          RETURNING id, sku`,
-        [productId, variant.sku, variant.color, variant.size, variant.material, variant.price, variant.compareAtPrice, variant.inventoryQuantity, variant.isActive],
+        [productId, variant.sku, variant.color, variant.size, variant.material, variant.price, variant.compareAtPrice, variant.inventoryQuantity, variant.lowStockThreshold, variant.isActive],
       );
       variantIdsBySku.set(createdVariant.sku, createdVariant.id);
     }
@@ -419,8 +420,8 @@ const updateProduct = async (productId, { categoryId, name, slug, description, b
     const variantIdsBySku = new Map();
     for (const variant of variants) {
       const { rows: [upsertedVariant] } = await client.query(
-        `INSERT INTO product_variants (product_id, sku, color, size, material, price, compare_at_price, inventory_quantity, is_active)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+        `INSERT INTO product_variants (product_id, sku, color, size, material, price, compare_at_price, inventory_quantity, low_stock_threshold, is_active)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
          ON CONFLICT (sku) DO UPDATE SET
            color = EXCLUDED.color,
            size = EXCLUDED.size,
@@ -428,9 +429,10 @@ const updateProduct = async (productId, { categoryId, name, slug, description, b
            price = EXCLUDED.price,
            compare_at_price = EXCLUDED.compare_at_price,
            inventory_quantity = EXCLUDED.inventory_quantity,
+           low_stock_threshold = EXCLUDED.low_stock_threshold,
            is_active = EXCLUDED.is_active
          RETURNING id, sku`,
-        [productId, variant.sku, variant.color, variant.size, variant.material, variant.price, variant.compareAtPrice, variant.inventoryQuantity, variant.isActive],
+        [productId, variant.sku, variant.color, variant.size, variant.material, variant.price, variant.compareAtPrice, variant.inventoryQuantity, variant.lowStockThreshold, variant.isActive],
       );
       variantIdsBySku.set(upsertedVariant.sku, upsertedVariant.id);
     }

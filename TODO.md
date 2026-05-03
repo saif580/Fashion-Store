@@ -68,10 +68,10 @@
 
 ## Inventory
 
-- [ ] Add inventory tracking on order placement
-- [ ] Add stock reservation strategy during checkout
-- [ ] Handle oversell prevention
-- [ ] Low stock warnings for admin
+- [x] Add inventory tracking on order placement
+- [x] Add stock reservation strategy during checkout
+- [x] Handle oversell prevention
+- [x] Low stock warnings for admin
 
 ## Payments
 
