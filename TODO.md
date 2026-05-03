@@ -47,14 +47,14 @@
 
 ## Cart
 
-- [ ] Create cart table in database
-- [ ] Create cart items table
-- [ ] POST /api/cart/items — add item to cart
-- [ ] GET /api/cart — get current user's cart
-- [ ] PUT /api/cart/items/:id — update quantity
-- [ ] DELETE /api/cart/items/:id — remove item
-- [ ] DELETE /api/cart — clear cart
-- [ ] Handle out-of-stock validation on add
+- [x] Create cart table in database
+- [x] Create cart items table
+- [x] POST /api/cart/items — add item to cart
+- [x] GET /api/cart — get current user's cart
+- [x] PUT /api/cart/items/:id — update quantity
+- [x] DELETE /api/cart/items/:id — remove item
+- [x] DELETE /api/cart — clear cart
+- [x] Handle out-of-stock validation on add
 
 ## Orders
 

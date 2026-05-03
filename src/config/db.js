@@ -285,6 +285,62 @@ const initializeDatabase = async () => {
     CREATE INDEX IF NOT EXISTS idx_product_variants_size_lower
     ON product_variants (LOWER(size));
   `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS carts (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await query(`
+    DO $$ BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger WHERE tgname = 'trg_carts_updated_at'
+      ) THEN
+        CREATE TRIGGER trg_carts_updated_at
+        BEFORE UPDATE ON carts
+        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+      END IF;
+    END $$;
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS cart_items (
+      id SERIAL PRIMARY KEY,
+      cart_id INTEGER NOT NULL REFERENCES carts(id) ON DELETE CASCADE,
+      product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+      variant_id INTEGER NOT NULL REFERENCES product_variants(id) ON DELETE CASCADE,
+      quantity INTEGER NOT NULL CHECK (quantity > 0),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      CONSTRAINT cart_items_cart_variant_key UNIQUE (cart_id, variant_id)
+    );
+  `);
+
+  await query(`
+    DO $$ BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger WHERE tgname = 'trg_cart_items_updated_at'
+      ) THEN
+        CREATE TRIGGER trg_cart_items_updated_at
+        BEFORE UPDATE ON cart_items
+        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+      END IF;
+    END $$;
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_cart_items_cart_id
+    ON cart_items (cart_id);
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_cart_items_variant_id
+    ON cart_items (variant_id);
+  `);
 };
 
 module.exports = {
