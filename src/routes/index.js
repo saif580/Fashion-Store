@@ -7,6 +7,7 @@ const inventoryRoutes = require("../modules/inventory/inventory.routes");
 const orderRoutes = require("../modules/orders/order.routes");
 const userRoutes = require("../modules/users/user.routes");
 const authRoutes = require("../modules/auth/auth.routes");
+const wishlistRoutes = require("../modules/wishlist/wishlist.routes");
 
 const router = express.Router();
 
@@ -18,5 +19,6 @@ router.use("/inventory", inventoryRoutes);
 router.use("/orders", orderRoutes);
 router.use("/users", userRoutes);
 router.use("/auth", authRoutes);
+router.use("/wishlist", wishlistRoutes);
 
 module.exports = router;

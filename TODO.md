@@ -90,17 +90,17 @@
 
 ## Wishlist
 
-- [ ] Create wishlist table
-- [ ] POST /api/wishlist — add product
-- [ ] GET /api/wishlist — get user's wishlist
-- [ ] DELETE /api/wishlist/:id — remove item
+- [x] Create wishlist table
+- [x] POST /api/wishlist — add product
+- [x] GET /api/wishlist — get user's wishlist
+- [x] DELETE /api/wishlist/:id — remove item
 
 ## Reviews & Ratings
 
-- [ ] Create product_reviews table
-- [ ] POST /api/products/:id/reviews — submit review
-- [ ] GET /api/products/:id/reviews — list reviews
-- [ ] Average rating on product listing
+- [x] Create product_reviews table
+- [x] POST /api/products/:id/reviews — submit review
+- [x] GET /api/products/:id/reviews — list reviews
+- [x] Average rating on product listing
 
 ## Admin
 

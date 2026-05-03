@@ -1,4 +1,5 @@
 const { pool, query } = require("../../config/db");
+const { getRatingStatsBatch } = require("../reviews/review.repository");
 
 const productColumns = `
   p.id,
@@ -37,7 +38,7 @@ const mapProducts = async (products) => {
 
   const productIds = products.map((p) => p.id);
 
-  const [variantsResult, imagesResult, attributesResult] = await Promise.all([
+  const [variantsResult, imagesResult, attributesResult, ratingsMap] = await Promise.all([
     query(
       `SELECT id, product_id, sku, color, size, material, price, compare_at_price,
               inventory_quantity, low_stock_threshold, is_active, created_at, updated_at
@@ -54,28 +55,36 @@ const mapProducts = async (products) => {
        FROM product_attributes WHERE product_id = ANY($1::int[]) ORDER BY id ASC`,
       [productIds],
     ),
+    getRatingStatsBatch(productIds),
   ]);
 
-  return products.map((product) => ({
-    id: product.id,
-    category_id: product.category_id,
-    category_name: product.category_name,
-    category_slug: product.category_slug,
-    name: product.name,
-    slug: product.slug,
-    description: product.description,
-    base_price: Number(product.base_price),
-    popularity_score: product.popularity_score,
-    min_price: product.min_price === undefined ? Number(product.base_price) : Number(product.min_price),
-    max_price: product.max_price === undefined ? Number(product.base_price) : Number(product.max_price),
-    total_inventory: product.total_inventory === undefined ? 0 : Number(product.total_inventory),
-    is_active: product.is_active,
-    created_at: product.created_at,
-    updated_at: product.updated_at,
-    variants: mapVariants(variantsResult.rows.filter((v) => v.product_id === product.id)),
-    images: imagesResult.rows.filter((i) => i.product_id === product.id),
-    attributes: attributesResult.rows.filter((a) => a.product_id === product.id),
-  }));
+  return products.map((product) => {
+    const ratingStats = ratingsMap.get(product.id);
+    return {
+      id: product.id,
+      category_id: product.category_id,
+      category_name: product.category_name,
+      category_slug: product.category_slug,
+      name: product.name,
+      slug: product.slug,
+      description: product.description,
+      base_price: Number(product.base_price),
+      popularity_score: product.popularity_score,
+      min_price: product.min_price === undefined ? Number(product.base_price) : Number(product.min_price),
+      max_price: product.max_price === undefined ? Number(product.base_price) : Number(product.max_price),
+      total_inventory: product.total_inventory === undefined ? 0 : Number(product.total_inventory),
+      is_active: product.is_active,
+      created_at: product.created_at,
+      updated_at: product.updated_at,
+      rating: {
+        average: ratingStats ? ratingStats.average : null,
+        count: ratingStats ? ratingStats.count : 0,
+      },
+      variants: mapVariants(variantsResult.rows.filter((v) => v.product_id === product.id)),
+      images: imagesResult.rows.filter((i) => i.product_id === product.id),
+      attributes: attributesResult.rows.filter((a) => a.product_id === product.id),
+    };
+  });
 };
 
 const buildProductWhereClause = ({

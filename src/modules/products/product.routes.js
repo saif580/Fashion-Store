@@ -2,6 +2,7 @@ const express = require("express");
 const productController = require("./product.controller");
 const { requireAuth, requireRole } = require("../../middleware/auth");
 const { uploadProductImage } = require("../../config/cloudinary");
+const reviewRoutes = require("../reviews/review.routes");
 
 const router = express.Router();
 
@@ -139,5 +140,7 @@ router.post("/", requireAuth, requireRole("admin"), productController.createProd
  *         description: Product updated successfully
  */
 router.put("/:productId", requireAuth, requireRole("admin"), productController.updateProduct);
+
+router.use("/:productId/reviews", reviewRoutes);
 
 module.exports = router;

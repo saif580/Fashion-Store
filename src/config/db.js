@@ -458,6 +458,52 @@ const initializeDatabase = async () => {
     CREATE INDEX IF NOT EXISTS idx_inventory_transactions_variant_id
     ON inventory_transactions (variant_id, created_at DESC);
   `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS wishlist_items (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      CONSTRAINT wishlist_items_user_product_key UNIQUE (user_id, product_id)
+    );
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_wishlist_items_user_id
+    ON wishlist_items (user_id, created_at DESC);
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS product_reviews (
+      id SERIAL PRIMARY KEY,
+      product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      rating SMALLINT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+      title VARCHAR(255),
+      body TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      CONSTRAINT product_reviews_user_product_key UNIQUE (product_id, user_id)
+    );
+  `);
+
+  await query(`
+    DO $$ BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger WHERE tgname = 'trg_product_reviews_updated_at'
+      ) THEN
+        CREATE TRIGGER trg_product_reviews_updated_at
+        BEFORE UPDATE ON product_reviews
+        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+      END IF;
+    END $$;
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_product_reviews_product_id
+    ON product_reviews (product_id, created_at DESC);
+  `);
 };
 
 module.exports = {
