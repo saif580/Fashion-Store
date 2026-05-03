@@ -162,10 +162,16 @@ const initializeDatabase = async () => {
       slug VARCHAR(200) UNIQUE NOT NULL,
       description TEXT,
       base_price NUMERIC(12,2) NOT NULL,
+      popularity_score INTEGER NOT NULL DEFAULT 0,
       is_active BOOLEAN NOT NULL DEFAULT TRUE,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+  `);
+
+  await query(`
+    ALTER TABLE products
+    ADD COLUMN IF NOT EXISTS popularity_score INTEGER NOT NULL DEFAULT 0;
   `);
 
   await query(`
@@ -215,10 +221,28 @@ const initializeDatabase = async () => {
       product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
       variant_id INTEGER REFERENCES product_variants(id) ON DELETE SET NULL,
       image_url TEXT NOT NULL,
+      cloudinary_public_id TEXT,
+      width INTEGER,
+      height INTEGER,
       alt_text VARCHAR(255),
       sort_order INTEGER NOT NULL DEFAULT 0,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+  `);
+
+  await query(`
+    ALTER TABLE product_images
+    ADD COLUMN IF NOT EXISTS cloudinary_public_id TEXT;
+  `);
+
+  await query(`
+    ALTER TABLE product_images
+    ADD COLUMN IF NOT EXISTS width INTEGER;
+  `);
+
+  await query(`
+    ALTER TABLE product_images
+    ADD COLUMN IF NOT EXISTS height INTEGER;
   `);
 
   await query(`
@@ -229,6 +253,37 @@ const initializeDatabase = async () => {
       value VARCHAR(255) NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_products_category_id
+    ON products (category_id);
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_products_popularity_score
+    ON products (popularity_score DESC, created_at DESC);
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_products_search_document
+    ON products
+    USING GIN (to_tsvector('simple', COALESCE(name, '') || ' ' || COALESCE(description, '')));
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_product_variants_product_price
+    ON product_variants (product_id, is_active, price);
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_product_variants_color_lower
+    ON product_variants (LOWER(color));
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_product_variants_size_lower
+    ON product_variants (LOWER(size));
   `);
 };
 

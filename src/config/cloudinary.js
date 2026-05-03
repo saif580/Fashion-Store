@@ -2,6 +2,7 @@ const cloudinary = require("cloudinary").v2;
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const multer = require("multer");
 const { cloudinaryCloudName, cloudinaryApiKey, cloudinaryApiSecret } = require("./env");
+const { createHttpError } = require("../utils/httpError");
 
 cloudinary.config({
   cloud_name: cloudinaryCloudName,
@@ -27,7 +28,32 @@ const productVideoStorage = new CloudinaryStorage({
   },
 });
 
-const uploadProductImage = multer({ storage: productImageStorage });
+const imageFileFilter = (req, file, cb) => {
+  if (!file.mimetype?.startsWith("image/")) {
+    return cb(createHttpError(400, "Only image uploads are allowed for this endpoint"));
+  }
+  cb(null, true);
+};
+
+const uploadProductImage = multer({
+  storage: productImageStorage,
+  fileFilter: imageFileFilter,
+  limits: {
+    files: 10,
+    fileSize: 8 * 1024 * 1024,
+  },
+});
+
 const uploadProductVideo = multer({ storage: productVideoStorage });
 
-module.exports = { cloudinary, uploadProductImage, uploadProductVideo };
+const deleteCloudinaryAsset = async (publicId, resourceType = "image") => {
+  if (!publicId) return;
+  await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
+};
+
+module.exports = {
+  cloudinary,
+  uploadProductImage,
+  uploadProductVideo,
+  deleteCloudinaryAsset,
+};

@@ -53,6 +53,27 @@ const findCategoryBySlug = async (slug) => {
   return rows[0] || null;
 };
 
+const listCategoryTreeIds = async (categoryId) => {
+  const { rows } = await query(
+    `
+      WITH RECURSIVE category_tree AS (
+        SELECT id
+        FROM categories
+        WHERE id = $1
+        UNION ALL
+        SELECT c.id
+        FROM categories c
+        INNER JOIN category_tree ct ON c.parent_id = ct.id
+      )
+      SELECT id
+      FROM category_tree;
+    `,
+    [categoryId],
+  );
+
+  return rows.map((row) => row.id);
+};
+
 const createCategory = async ({ name, slug, description, parentId, imageUrl, isActive }) => {
   const { rows } = await query(
     `
@@ -99,6 +120,7 @@ module.exports = {
   listCategories,
   findCategoryById,
   findCategoryBySlug,
+  listCategoryTreeIds,
   createCategory,
   updateCategory,
 };

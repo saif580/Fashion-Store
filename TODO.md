@@ -40,10 +40,10 @@
 - [x] Product variants (SKU, size, color, material, price, compare_at_price)
 - [x] Product images support
 - [x] Product attributes (generic key-value)
-- [ ] Wire Cloudinary upload into product image endpoints
-- [ ] Add product search (full-text)
-- [ ] Add product filters (price, size, color, category)
-- [ ] Add sort options (price, newest, popularity)
+- [x] Wire Cloudinary upload into product image endpoints
+- [x] Add product search (full-text)
+- [x] Add product filters (price, size, color, category)
+- [x] Add sort options (price, newest, popularity)
 
 ## Cart
 

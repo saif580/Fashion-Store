@@ -468,6 +468,89 @@
         "tags": [
           "Products"
         ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Full-text search against name, description, SKU, variant fields, and attributes"
+          },
+          {
+            "in": "query",
+            "name": "categoryId",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Filter by a category and all of its descendants"
+          },
+          {
+            "in": "query",
+            "name": "categorySlug",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by a category slug and all of its descendants"
+          },
+          {
+            "in": "query",
+            "name": "minPrice",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "maxPrice",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sizes",
+            "schema": {
+              "type": "string",
+              "example": "M,L,XL"
+            }
+          },
+          {
+            "in": "query",
+            "name": "colors",
+            "schema": {
+              "type": "string",
+              "example": "black,navy"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "newest",
+                "price_asc",
+                "price_desc",
+                "popularity"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Products fetched successfully"
@@ -487,6 +570,46 @@
         "responses": {
           "201": {
             "description": "Product created successfully"
+          }
+        }
+      }
+    },
+    "/api/products/images/upload": {
+      "post": {
+        "summary": "Upload product images to Cloudinary",
+        "tags": [
+          "Products"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "images"
+                ],
+                "properties": {
+                  "images": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Product images uploaded successfully"
           }
         }
       }

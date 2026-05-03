@@ -2,6 +2,7 @@ const productRepository = require("./product.repository");
 const categoryRepository = require("../categories/category.repository");
 const { createHttpError } = require("../../utils/httpError");
 const { slugify } = require("../../utils/slug");
+const { deleteCloudinaryAsset } = require("../../config/cloudinary");
 
 const normalizeVariant = (variant) => {
   if (!variant.sku?.trim()) {
@@ -32,6 +33,24 @@ const normalizeVariant = (variant) => {
   };
 };
 
+const normalizeImage = (image, index) => {
+  const imageUrl = image.imageUrl?.trim();
+
+  if (!imageUrl) {
+    throw createHttpError(400, "Each product image must have an imageUrl");
+  }
+
+  return {
+    imageUrl,
+    publicId: image.publicId?.trim() || null,
+    width: Number.isInteger(Number(image.width)) ? Number(image.width) : null,
+    height: Number.isInteger(Number(image.height)) ? Number(image.height) : null,
+    altText: image.altText?.trim() || null,
+    sortOrder: Number.isInteger(Number(image.sortOrder)) ? Number(image.sortOrder) : index,
+    variantSku: image.variantSku?.trim() || null,
+  };
+};
+
 const normalizePayload = (payload) => {
   const name = payload.name?.trim();
   const slug = (payload.slug?.trim() || slugify(name || ""));
@@ -52,6 +71,13 @@ const normalizePayload = (payload) => {
     throw createHttpError(400, "Base price must be a positive number");
   }
 
+  if (
+    payload.popularityScore !== undefined
+    && (!Number.isInteger(Number(payload.popularityScore)) || Number(payload.popularityScore) < 0)
+  ) {
+    throw createHttpError(400, "Popularity score must be a non-negative integer");
+  }
+
   if (!Array.isArray(payload.variants) || payload.variants.length === 0) {
     throw createHttpError(400, "At least one product variant is required");
   }
@@ -66,16 +92,8 @@ const normalizePayload = (payload) => {
   }
 
   const images = Array.isArray(payload.images)
-    ? payload.images.map((image, index) => ({
-        imageUrl: image.imageUrl?.trim(),
-        altText: image.altText?.trim() || null,
-        sortOrder: Number.isInteger(Number(image.sortOrder)) ? Number(image.sortOrder) : index,
-      }))
+    ? payload.images.map(normalizeImage)
     : [];
-
-  if (images.some((image) => !image.imageUrl)) {
-    throw createHttpError(400, "Each product image must have an imageUrl");
-  }
 
   const attributes = Array.isArray(payload.attributes)
     ? payload.attributes.map((attribute) => ({
@@ -94,6 +112,7 @@ const normalizePayload = (payload) => {
     slug,
     description: payload.description?.trim() || null,
     basePrice: Number(payload.basePrice),
+    popularityScore: payload.popularityScore === undefined ? 0 : Number(payload.popularityScore),
     isActive: payload.isActive !== false,
     variants,
     images,
@@ -108,8 +127,97 @@ const ensureCategoryExists = async (categoryId) => {
   }
 };
 
-const listProducts = ({ page, limit, onlyActive } = {}) =>
-  productRepository.listProducts({ page, limit, onlyActive });
+const ensureVariantImageReferencesExist = (variants, images) => {
+  const variantSkus = new Set(variants.map((variant) => variant.sku));
+
+  for (const image of images) {
+    if (image.variantSku && !variantSkus.has(image.variantSku)) {
+      throw createHttpError(400, `Image variantSku "${image.variantSku}" does not exist in the product variants`);
+    }
+  }
+};
+
+const resolveCategoryIds = async ({ categoryId, categorySlug }) => {
+  if (categoryId) {
+    const category = await categoryRepository.findCategoryById(categoryId);
+    if (!category) {
+      throw createHttpError(400, "Category filter not found");
+    }
+    return categoryRepository.listCategoryTreeIds(categoryId);
+  }
+
+  if (categorySlug) {
+    const category = await categoryRepository.findCategoryBySlug(categorySlug);
+    if (!category) {
+      throw createHttpError(400, "Category filter not found");
+    }
+    return categoryRepository.listCategoryTreeIds(category.id);
+  }
+
+  return [];
+};
+
+const listProducts = async ({
+  page,
+  limit,
+  onlyActive,
+  search,
+  categoryId,
+  categorySlug,
+  minPrice,
+  maxPrice,
+  sizes,
+  colors,
+  sortBy,
+} = {}) => {
+  const allowedSorts = new Set(["newest", "price_asc", "price_desc", "popularity"]);
+  const hasCategoryId = categoryId !== null && categoryId !== undefined;
+  const hasMinPrice = minPrice !== null && minPrice !== undefined;
+  const hasMaxPrice = maxPrice !== null && maxPrice !== undefined;
+
+  if (hasCategoryId && (!Number.isInteger(Number(categoryId)) || Number(categoryId) <= 0)) {
+    throw createHttpError(400, "Category filter must be a positive integer");
+  }
+
+  if (hasMinPrice && !Number.isFinite(Number(minPrice))) {
+    throw createHttpError(400, "Minimum price must be a valid number");
+  }
+
+  if (hasMaxPrice && !Number.isFinite(Number(maxPrice))) {
+    throw createHttpError(400, "Maximum price must be a valid number");
+  }
+
+  if (hasMinPrice && Number(minPrice) < 0) {
+    throw createHttpError(400, "Minimum price cannot be negative");
+  }
+
+  if (hasMaxPrice && Number(maxPrice) < 0) {
+    throw createHttpError(400, "Maximum price cannot be negative");
+  }
+
+  if (hasMinPrice && hasMaxPrice && Number(minPrice) > Number(maxPrice)) {
+    throw createHttpError(400, "Minimum price cannot be greater than maximum price");
+  }
+
+  if (sortBy && !allowedSorts.has(sortBy)) {
+    throw createHttpError(400, "Sort must be one of newest, price_asc, price_desc, or popularity");
+  }
+
+  const categoryIds = await resolveCategoryIds({ categoryId, categorySlug });
+
+  return productRepository.listProducts({
+    page,
+    limit,
+    onlyActive,
+    search,
+    categoryIds,
+    minPrice: minPrice === null || minPrice === undefined ? null : Number(minPrice),
+    maxPrice: maxPrice === null || maxPrice === undefined ? null : Number(maxPrice),
+    sizes,
+    colors,
+    sortBy,
+  });
+};
 
 const getProductById = async (productId) => {
   const product = await productRepository.findProductById(productId);
@@ -124,6 +232,7 @@ const getProductById = async (productId) => {
 const createProduct = async (payload) => {
   const product = normalizePayload(payload);
   await ensureCategoryExists(product.categoryId);
+  ensureVariantImageReferencesExist(product.variants, product.images);
 
   const existing = await productRepository.findProductBySlug(product.slug);
   if (existing) {
@@ -141,13 +250,42 @@ const updateProduct = async (productId, payload) => {
 
   const product = normalizePayload(payload);
   await ensureCategoryExists(product.categoryId);
+  ensureVariantImageReferencesExist(product.variants, product.images);
+  if (payload.popularityScore === undefined) {
+    product.popularityScore = Number(existingProduct.popularity_score || 0);
+  }
 
   const slugOwner = await productRepository.findProductBySlug(product.slug);
   if (slugOwner && slugOwner.id !== productId) {
     throw createHttpError(409, "Product slug already exists");
   }
 
-  return productRepository.updateProduct(productId, product);
+  const updatedProduct = await productRepository.updateProduct(productId, product);
+
+  const retainedPublicIds = new Set(product.images.map((image) => image.publicId).filter(Boolean));
+  const removedPublicIds = existingProduct.images
+    .map((image) => image.cloudinary_public_id)
+    .filter((publicId) => publicId && !retainedPublicIds.has(publicId));
+
+  await Promise.allSettled(removedPublicIds.map((publicId) => deleteCloudinaryAsset(publicId)));
+
+  return updatedProduct;
+};
+
+const uploadProductImages = async (files) => {
+  if (!Array.isArray(files) || files.length === 0) {
+    throw createHttpError(400, "At least one image file is required");
+  }
+
+  return files.map((file, index) => ({
+    imageUrl: file.path,
+    publicId: file.filename || null,
+    width: file.width ?? null,
+    height: file.height ?? null,
+    format: file.format ?? null,
+    originalFilename: file.originalname,
+    sortOrder: index,
+  }));
 };
 
 module.exports = {
@@ -155,4 +293,5 @@ module.exports = {
   getProductById,
   createProduct,
   updateProduct,
+  uploadProductImages,
 };
