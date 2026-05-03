@@ -2,7 +2,7 @@ const productRepository = require("./product.repository");
 const categoryRepository = require("../categories/category.repository");
 const { createHttpError } = require("../../utils/httpError");
 const { slugify } = require("../../utils/slug");
-const { deleteCloudinaryAsset } = require("../../config/cloudinary");
+const { cloudinary, deleteCloudinaryAsset } = require("../../config/cloudinary");
 
 const normalizeVariant = (variant) => {
   if (!variant.sku?.trim()) {
@@ -277,15 +277,22 @@ const uploadProductImages = async (files) => {
     throw createHttpError(400, "At least one image file is required");
   }
 
-  return files.map((file, index) => ({
-    imageUrl: file.path,
-    publicId: file.filename || null,
-    width: file.width ?? null,
-    height: file.height ?? null,
-    format: file.format ?? null,
-    originalFilename: file.originalname,
-    sortOrder: index,
-  }));
+  const results = await Promise.all(
+    files.map(async (file, index) => {
+      const resource = await cloudinary.api.resource(file.filename);
+      return {
+        imageUrl: file.path,
+        publicId: file.filename || null,
+        width: resource.width ?? null,
+        height: resource.height ?? null,
+        format: resource.format ?? null,
+        originalFilename: file.originalname,
+        sortOrder: index,
+      };
+    })
+  );
+
+  return results;
 };
 
 module.exports = {
