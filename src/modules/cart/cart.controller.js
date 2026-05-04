@@ -46,10 +46,20 @@ const clearCart = async (req, res, next) => {
   }
 };
 
+const applyCoupon = async (req, res, next) => {
+  try {
+    const cart = await cartService.applyCoupon(req.user.id, req.body);
+    sendSuccess(res, cart);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getCart,
   addItem,
   updateItemQuantity,
   removeItem,
   clearCart,
+  applyCoupon,
 };

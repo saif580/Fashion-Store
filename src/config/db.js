@@ -349,6 +349,49 @@ const initializeDatabase = async () => {
   `);
 
   await query(`
+    CREATE TABLE IF NOT EXISTS coupons (
+      id SERIAL PRIMARY KEY,
+      code VARCHAR(80) UNIQUE NOT NULL,
+      type VARCHAR(20) NOT NULL CHECK (type IN ('percentage', 'fixed', 'free_shipping')),
+      value NUMERIC(12,2) NOT NULL DEFAULT 0,
+      min_purchase_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+      usage_limit INTEGER,
+      uses_count INTEGER NOT NULL DEFAULT 0,
+      expires_at TIMESTAMPTZ,
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await query(`
+    DO $$ BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger WHERE tgname = 'trg_coupons_updated_at'
+      ) THEN
+        CREATE TRIGGER trg_coupons_updated_at
+        BEFORE UPDATE ON coupons
+        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+      END IF;
+    END $$;
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS cart_coupons (
+      id SERIAL PRIMARY KEY,
+      cart_id INTEGER NOT NULL REFERENCES carts(id) ON DELETE CASCADE,
+      coupon_id INTEGER NOT NULL REFERENCES coupons(id) ON DELETE RESTRICT,
+      applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      CONSTRAINT cart_coupons_cart_key UNIQUE (cart_id)
+    );
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_cart_coupons_cart_id
+    ON cart_coupons (cart_id);
+  `);
+
+  await query(`
     CREATE TABLE IF NOT EXISTS orders (
       id SERIAL PRIMARY KEY,
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
@@ -379,6 +422,55 @@ const initializeDatabase = async () => {
         FOR EACH ROW EXECUTE FUNCTION set_updated_at();
       END IF;
     END $$;
+  `);
+
+  await query(`
+    ALTER TABLE orders
+    ADD COLUMN IF NOT EXISTS discount_amount NUMERIC(12,2) NOT NULL DEFAULT 0;
+  `);
+
+  await query(`
+    ALTER TABLE orders
+    ADD COLUMN IF NOT EXISTS total NUMERIC(12,2) NOT NULL DEFAULT 0;
+  `);
+
+  await query(`
+    ALTER TABLE orders
+    ADD COLUMN IF NOT EXISTS coupon_code VARCHAR(80);
+  `);
+
+  await query(`
+    ALTER TABLE orders
+    ADD COLUMN IF NOT EXISTS coupon_type VARCHAR(20);
+  `);
+
+  await query(`
+    ALTER TABLE orders
+    ADD COLUMN IF NOT EXISTS coupon_value NUMERIC(12,2);
+  `);
+
+  await query(`
+    ALTER TABLE orders
+    ADD COLUMN IF NOT EXISTS free_shipping BOOLEAN NOT NULL DEFAULT FALSE;
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS order_coupons (
+      id SERIAL PRIMARY KEY,
+      order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+      coupon_id INTEGER NOT NULL REFERENCES coupons(id) ON DELETE RESTRICT,
+      code VARCHAR(80) NOT NULL,
+      type VARCHAR(20) NOT NULL,
+      value NUMERIC(12,2) NOT NULL,
+      discount_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+      free_shipping BOOLEAN NOT NULL DEFAULT FALSE,
+      applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_order_coupons_order_id
+    ON order_coupons (order_id);
   `);
 
   await query(`

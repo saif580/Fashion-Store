@@ -11,6 +11,14 @@ const normalizeQuantity = (value, fieldName = "quantity") => {
   return quantity;
 };
 
+const normalizeCouponCode = (value) => {
+  const code = String(value || "").trim();
+  if (!code) {
+    throw createHttpError(400, "Coupon code is required");
+  }
+  return code;
+};
+
 const ensureVariantCanBeAdded = (variant, quantity) => {
   if (!variant) {
     throw createHttpError(404, "Product variant not found");
@@ -25,7 +33,105 @@ const ensureVariantCanBeAdded = (variant, quantity) => {
   }
 };
 
-const getCart = async (userId) => cartRepository.getCartByUserId(userId);
+const calculateCouponDiscount = (subtotal, coupon) => {
+  const amount = Number(subtotal);
+  const couponValue = Number(coupon.value || 0);
+
+  if (coupon.type === "percentage") {
+    return Number((amount * (couponValue / 100)).toFixed(2));
+  }
+
+  if (coupon.type === "fixed") {
+    return Math.min(amount, couponValue);
+  }
+
+  return 0;
+};
+
+const validateCoupon = (subtotal, coupon) => {
+  if (!coupon) {
+    throw createHttpError(404, "Coupon not found");
+  }
+
+  if (!coupon.is_active) {
+    throw createHttpError(400, "Coupon is not active");
+  }
+
+  if (coupon.expires_at && new Date(coupon.expires_at) <= new Date()) {
+    throw createHttpError(400, "Coupon has expired");
+  }
+
+  if (coupon.usage_limit !== null && coupon.uses_count >= coupon.usage_limit) {
+    throw createHttpError(400, "Coupon has reached its usage limit");
+  }
+
+  if (Number(subtotal) < Number(coupon.min_purchase_amount || 0)) {
+    throw createHttpError(400, `Cart subtotal must be at least Rs. ${coupon.min_purchase_amount} to use this coupon`);
+  }
+};
+
+const buildCartResponse = async (cart) => {
+  if (!cart || !cart.id) {
+    return cart;
+  }
+
+  const coupon = await cartRepository.findCartCouponByCartId(cart.id);
+
+  if (!coupon) {
+    return {
+      ...cart,
+      coupon: null,
+      summary: {
+        ...cart.summary,
+        discount_amount: 0,
+        free_shipping: false,
+        total: cart.summary.subtotal,
+      },
+    };
+  }
+
+  try {
+    validateCoupon(cart.summary.subtotal, coupon);
+  } catch (error) {
+    await cartRepository.removeCouponFromCart(cart.id);
+    return {
+      ...cart,
+      coupon: null,
+      summary: {
+        ...cart.summary,
+        discount_amount: 0,
+        free_shipping: false,
+        total: cart.summary.subtotal,
+      },
+    };
+  }
+
+  const discount = calculateCouponDiscount(cart.summary.subtotal, coupon);
+  const total = Math.max(0, cart.summary.subtotal - discount);
+
+  return {
+    ...cart,
+    coupon: {
+      code: coupon.code,
+      type: coupon.type,
+      value: Number(coupon.value),
+      min_purchase_amount: Number(coupon.min_purchase_amount || 0),
+      free_shipping: coupon.type === "free_shipping",
+      applied_at: coupon.applied_at,
+    },
+    summary: {
+      ...cart.summary,
+      discount_amount: discount,
+      free_shipping: coupon.type === "free_shipping",
+      total,
+    },
+  };
+};
+
+const getCart = async (userId) => {
+  const cart = await cartRepository.getCartByUserId(userId);
+  return buildCartResponse(cart);
+};
 
 const addItem = async (userId, payload) => {
   const variantId = Number(payload.variantId);
@@ -43,7 +149,8 @@ const addItem = async (userId, payload) => {
   ensureVariantCanBeAdded(variant, targetQuantity);
 
   await cartRepository.addItemToCart(userId, variant, quantity);
-  return cartRepository.getCartByUserId(userId);
+  const cart = await cartRepository.getCartByUserId(userId);
+  return buildCartResponse(cart);
 };
 
 const updateItemQuantity = async (userId, cartItemId, payload) => {
@@ -63,7 +170,8 @@ const updateItemQuantity = async (userId, cartItemId, payload) => {
   ensureVariantCanBeAdded(variant, quantity);
 
   await cartRepository.updateCartItemQuantity(userId, itemId, quantity);
-  return cartRepository.getCartByUserId(userId);
+  const cart = await cartRepository.getCartByUserId(userId);
+  return buildCartResponse(cart);
 };
 
 const removeItem = async (userId, cartItemId) => {
@@ -77,7 +185,8 @@ const removeItem = async (userId, cartItemId) => {
     throw createHttpError(404, "Cart item not found");
   }
 
-  return cartRepository.getCartByUserId(userId);
+  const cart = await cartRepository.getCartByUserId(userId);
+  return buildCartResponse(cart);
 };
 
 const clearCart = async (userId) => {
@@ -86,8 +195,27 @@ const clearCart = async (userId) => {
 
   return {
     ...cart,
+    coupon: null,
+    summary: {
+      ...cart.summary,
+      discount_amount: 0,
+      free_shipping: false,
+      total: cart.summary.subtotal,
+    },
     message: removedCount > 0 ? "Cart cleared successfully" : "Cart was already empty",
   };
+};
+
+const applyCoupon = async (userId, payload) => {
+  const code = normalizeCouponCode(payload.code);
+  const cart = await cartRepository.getCartByUserId(userId);
+  const coupon = await cartRepository.findCouponByCode(code);
+
+  validateCoupon(cart.summary.subtotal, coupon);
+
+  await cartRepository.applyCouponToCart(cart.id, coupon.id);
+  const updatedCart = await cartRepository.getCartByUserId(userId);
+  return buildCartResponse(updatedCart);
 };
 
 module.exports = {
@@ -96,4 +224,5 @@ module.exports = {
   updateItemQuantity,
   removeItem,
   clearCart,
+  applyCoupon,
 };

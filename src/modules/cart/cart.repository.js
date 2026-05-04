@@ -242,18 +242,115 @@ const deleteCartItem = async (userId, cartItemId) => {
 };
 
 const clearCart = async (userId) => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const { rows } = await client.query(
+      `
+        DELETE FROM cart_items ci
+        USING carts c
+        WHERE ci.cart_id = c.id
+          AND c.user_id = $1
+      `,
+      [userId],
+    );
+
+    await client.query(
+      `
+        DELETE FROM cart_coupons cc
+        USING carts c
+        WHERE cc.cart_id = c.id
+          AND c.user_id = $1
+      `,
+      [userId],
+    );
+
+    await client.query("COMMIT");
+    return rows.length;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+const findCouponByCode = async (code) => {
   const { rows } = await query(
     `
-      DELETE FROM cart_items ci
-      USING carts c
-      WHERE ci.cart_id = c.id
-        AND c.user_id = $1
-      RETURNING ci.id;
+      SELECT
+        id,
+        code,
+        type,
+        value,
+        min_purchase_amount,
+        usage_limit,
+        uses_count,
+        expires_at,
+        is_active
+      FROM coupons
+      WHERE LOWER(code) = LOWER($1)
+      LIMIT 1;
     `,
-    [userId],
+    [code],
   );
 
-  return rows.length;
+  return rows[0] || null;
+};
+
+const findCartCouponByCartId = async (cartId) => {
+  const { rows } = await query(
+    `
+      SELECT
+        c.id AS coupon_id,
+        c.code,
+        c.type,
+        c.value,
+        c.min_purchase_amount,
+        c.usage_limit,
+        c.uses_count,
+        c.expires_at,
+        c.is_active,
+        cc.applied_at
+      FROM cart_coupons cc
+      INNER JOIN coupons c ON c.id = cc.coupon_id
+      WHERE cc.cart_id = $1
+      LIMIT 1;
+    `,
+    [cartId],
+  );
+
+  return rows[0] || null;
+};
+
+const applyCouponToCart = async (cartId, couponId) => {
+  const { rows } = await query(
+    `
+      INSERT INTO cart_coupons (cart_id, coupon_id)
+      VALUES ($1, $2)
+      ON CONFLICT (cart_id) DO UPDATE
+      SET coupon_id = EXCLUDED.coupon_id,
+          applied_at = NOW()
+      RETURNING id, cart_id, coupon_id, applied_at;
+    `,
+    [cartId, couponId],
+  );
+
+  return rows[0] || null;
+};
+
+const removeCouponFromCart = async (cartId) => {
+  const { rows } = await query(
+    `
+      DELETE FROM cart_coupons
+      WHERE cart_id = $1
+      RETURNING id;
+    `,
+    [cartId],
+  );
+
+  return rows[0] || null;
 };
 
 module.exports = {
@@ -264,4 +361,8 @@ module.exports = {
   updateCartItemQuantity,
   deleteCartItem,
   clearCart,
+  findCouponByCode,
+  findCartCouponByCartId,
+  applyCouponToCart,
+  removeCouponFromCart,
 };

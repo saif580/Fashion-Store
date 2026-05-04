@@ -74,4 +74,28 @@ router.delete("/items/:id", requireAuth, cartController.removeItem);
  */
 router.delete("/", requireAuth, cartController.clearCart);
 
+/**
+ * @swagger
+ * /api/cart/coupon:
+ *   post:
+ *     summary: Apply a coupon code to the logged-in user's cart
+ *     tags: [Cart]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               code:
+ *                 type: string
+ *                 example: SAVE20
+ *     responses:
+ *       200:
+ *         description: Coupon applied successfully
+ */
+router.post("/coupon", requireAuth, cartController.applyCoupon);
+
 module.exports = router;

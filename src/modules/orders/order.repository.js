@@ -7,6 +7,12 @@ const orderSelectColumns = `
   o.order_number,
   o.status,
   o.subtotal,
+  o.discount_amount,
+  o.total,
+  o.coupon_code,
+  o.coupon_type,
+  o.coupon_value,
+  o.free_shipping,
   o.shipping_full_name,
   o.shipping_phone,
   o.shipping_address_line_1,
@@ -26,6 +32,12 @@ const orderReturningColumns = `
   order_number,
   status,
   subtotal,
+  discount_amount,
+  total,
+  coupon_code,
+  coupon_type,
+  coupon_value,
+  free_shipping,
   shipping_full_name,
   shipping_phone,
   shipping_address_line_1,
@@ -98,6 +110,16 @@ const hydrateOrders = async (orders) => {
       order_number: order.order_number,
       status: order.status,
       subtotal: Number(order.subtotal),
+      discount_amount: Number(order.discount_amount || 0),
+      total: Number(order.total || order.subtotal),
+      coupon: order.coupon_code
+        ? {
+            code: order.coupon_code,
+            type: order.coupon_type,
+            value: Number(order.coupon_value || 0),
+            free_shipping: order.free_shipping,
+          }
+        : null,
       shipping_address: {
         full_name: order.shipping_full_name,
         phone: order.shipping_phone,
@@ -147,6 +169,33 @@ const getCartItemsForCheckout = async (userId, client) => {
   );
 
   return rows;
+};
+
+const getCartCouponForCheckout = async (userId, client) => {
+  const { rows } = await client.query(
+    `
+      SELECT
+        c.id AS coupon_id,
+        c.code,
+        c.type,
+        c.value,
+        c.min_purchase_amount,
+        c.usage_limit,
+        c.uses_count,
+        c.expires_at,
+        c.is_active,
+        cc.applied_at,
+        cc.cart_id
+      FROM cart_coupons cc
+      INNER JOIN coupons c ON c.id = cc.coupon_id
+      INNER JOIN carts crt ON crt.id = cc.cart_id
+      WHERE crt.user_id = $1
+      LIMIT 1;
+    `,
+    [userId],
+  );
+
+  return rows[0] || null;
 };
 
 const generateOrderNumber = () => `ORD-${Date.now()}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
@@ -207,6 +256,52 @@ const createOrderFromCart = async ({ userId, shippingAddress }) => {
     }
 
     const subtotal = cartItems.reduce((sum, item) => sum + Number(item.price) * item.quantity, 0);
+    const coupon = await getCartCouponForCheckout(userId, client);
+
+    let discountAmount = 0;
+    let freeShipping = false;
+    let couponCode = null;
+    let couponType = null;
+    let couponValue = null;
+
+    if (coupon) {
+      if (!coupon.is_active) {
+        const error = new Error("Coupon is not active");
+        error.status = 400;
+        throw error;
+      }
+
+      if (coupon.expires_at && new Date(coupon.expires_at) <= new Date()) {
+        const error = new Error("Coupon has expired");
+        error.status = 400;
+        throw error;
+      }
+
+      if (coupon.usage_limit !== null && coupon.uses_count >= coupon.usage_limit) {
+        const error = new Error("Coupon has reached its usage limit");
+        error.status = 400;
+        throw error;
+      }
+
+      if (subtotal < Number(coupon.min_purchase_amount || 0)) {
+        const error = new Error(`Cart subtotal must be at least Rs. ${coupon.min_purchase_amount} to use this coupon`);
+        error.status = 400;
+        throw error;
+      }
+
+      couponCode = coupon.code;
+      couponType = coupon.type;
+      couponValue = Number(coupon.value || 0);
+      freeShipping = coupon.type === "free_shipping";
+
+      if (coupon.type === "percentage") {
+        discountAmount = Number((subtotal * (couponValue / 100)).toFixed(2));
+      } else if (coupon.type === "fixed") {
+        discountAmount = Math.min(subtotal, couponValue);
+      }
+    }
+
+    const total = Math.max(0, subtotal - discountAmount);
     const orderNumber = generateOrderNumber();
 
     const { rows: [order] } = await client.query(
@@ -216,6 +311,12 @@ const createOrderFromCart = async ({ userId, shippingAddress }) => {
           order_number,
           status,
           subtotal,
+          discount_amount,
+          total,
+          coupon_code,
+          coupon_type,
+          coupon_value,
+          free_shipping,
           shipping_full_name,
           shipping_phone,
           shipping_address_line_1,
@@ -225,13 +326,19 @@ const createOrderFromCart = async ({ userId, shippingAddress }) => {
           shipping_postal_code,
           shipping_country
         )
-        VALUES ($1,$2,'pending',$3,$4,$5,$6,$7,$8,$9,$10,$11)
+        VALUES ($1,$2,'pending',$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
         RETURNING ${orderReturningColumns};
       `,
       [
         userId,
         orderNumber,
         subtotal,
+        discountAmount,
+        total,
+        couponCode,
+        couponType,
+        couponValue,
+        freeShipping,
         shippingAddress.full_name,
         shippingAddress.phone,
         shippingAddress.address_line_1,
@@ -337,6 +444,53 @@ const createOrderFromCart = async ({ userId, shippingAddress }) => {
     await client.query(
       `
         DELETE FROM cart_items
+        WHERE cart_id IN (
+          SELECT id FROM carts WHERE user_id = $1
+        );
+      `,
+      [userId],
+    );
+
+    if (coupon) {
+      await client.query(
+        `
+          UPDATE coupons
+          SET uses_count = uses_count + 1
+          WHERE id = $1;
+        `,
+        [coupon.coupon_id],
+      );
+
+      await client.query(
+        `
+          INSERT INTO order_coupons (
+            order_id,
+            coupon_id,
+            code,
+            type,
+            value,
+            discount_amount,
+            free_shipping,
+            applied_at
+          )
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8);
+        `,
+        [
+          order.id,
+          coupon.coupon_id,
+          couponCode,
+          couponType,
+          couponValue,
+          discountAmount,
+          freeShipping,
+          coupon.applied_at,
+        ],
+      );
+    }
+
+    await client.query(
+      `
+        DELETE FROM cart_coupons
         WHERE cart_id IN (
           SELECT id FROM carts WHERE user_id = $1
         );
