@@ -55,6 +55,8 @@
 - [x] DELETE /api/cart/items/:id — remove item
 - [x] DELETE /api/cart — clear cart
 - [x] Handle out-of-stock validation on add
+- [x] POST /api/cart/coupon — apply coupon to cart
+- [x] DELETE /api/cart/coupon — remove coupon from cart
 
 ## Orders
 
@@ -83,10 +85,12 @@
 
 ## Coupons & Discounts
 
-- [ ] Create coupons table
-- [ ] POST /api/cart/coupon — apply coupon
-- [ ] Discount calculation logic (percentage, fixed, free shipping)
-- [ ] Coupon expiry and usage limits
+- [x] Create coupons table (discount_type, max_discount_amount, per_user_limit, starts_at, free_shipping flag)
+- [x] Create coupon_redemptions table for per-user tracking
+- [x] Discount calculation (percentage with cap, fixed, free shipping)
+- [x] Coupon validation: expiry, start date, global usage limit, per-user limit
+- [x] Coupon applied and discount persisted at order placement
+- [x] Discount and total shown in order confirmation email
 
 ## Wishlist
 
