@@ -108,10 +108,10 @@
 
 ## Admin
 
-- [ ] Admin product management (create, update, delete, bulk)
-- [ ] Admin category management (delete)
-- [ ] Admin order management (view all, update status)
-- [ ] Admin user management (list, edit role, deactivate)
+- [x] Admin product management (create, update, delete, bulk)
+- [x] Admin category management (delete)
+- [x] Admin order management (view all, update status)
+- [x] Admin user management (list, edit role, deactivate)
 - [ ] Sales and inventory reports
 
 ## Documentation

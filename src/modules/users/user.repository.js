@@ -77,6 +77,7 @@ const findByEmail = async (email) => {
         email,
         phone,
         role,
+        is_active,
         is_email_verified,
         is_marketing_opt_in,
         password_hash,
@@ -102,6 +103,7 @@ const findById = async (id) => {
         email,
         phone,
         role,
+        is_active,
         is_email_verified,
         is_marketing_opt_in,
         created_at,
@@ -143,6 +145,7 @@ const updateProfile = async (userId, { firstName, lastName, phone, isMarketingOp
         email,
         phone,
         role,
+        is_active,
         is_email_verified,
         is_marketing_opt_in,
         created_at,
@@ -304,6 +307,60 @@ const countAddressesByUserId = async (userId) => {
   return rows[0]?.count || 0;
 };
 
+const userPublicColumns = `
+  id, name, first_name, last_name, email, phone, role, is_active,
+  is_email_verified, is_marketing_opt_in, created_at, updated_at
+`;
+
+const listUsers = async ({ page = 1, limit = 20, search = null, role = null } = {}) => {
+  const clauses = [];
+  const params = [];
+  const addParam = (v) => { params.push(v); return `$${params.length}`; };
+
+  if (role) clauses.push(`role = ${addParam(role)}`);
+  if (search) {
+    const likeToken = addParam(`%${search}%`);
+    clauses.push(`(name ILIKE ${likeToken} OR email ILIKE ${likeToken})`);
+  }
+
+  const whereClause = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
+  const offset = (page - 1) * limit;
+  const countParams = [...params];
+  const listParams = [...params, limit, offset];
+
+  const [countResult, rowsResult] = await Promise.all([
+    query(`SELECT COUNT(*) FROM users ${whereClause}`, countParams),
+    query(
+      `SELECT ${userPublicColumns} FROM users ${whereClause}
+       ORDER BY created_at DESC
+       LIMIT $${listParams.length - 1} OFFSET $${listParams.length}`,
+      listParams,
+    ),
+  ]);
+
+  const total = Number(countResult.rows[0].count);
+  return {
+    users: rowsResult.rows,
+    pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+  };
+};
+
+const updateUserRole = async (userId, role) => {
+  const { rows } = await query(
+    `UPDATE users SET role = $2 WHERE id = $1 RETURNING ${userPublicColumns}`,
+    [userId, role],
+  );
+  return rows[0] || null;
+};
+
+const setUserActive = async (userId, isActive) => {
+  const { rows } = await query(
+    `UPDATE users SET is_active = $2 WHERE id = $1 RETURNING ${userPublicColumns}`,
+    [userId, isActive],
+  );
+  return rows[0] || null;
+};
+
 module.exports = {
   createUser,
   findByEmail,
@@ -319,4 +376,7 @@ module.exports = {
   updateAddress,
   deleteAddress,
   countAddressesByUserId,
+  listUsers,
+  updateUserRole,
+  setUserActive,
 };

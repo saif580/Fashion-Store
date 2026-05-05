@@ -141,6 +141,83 @@ router.post("/", requireAuth, requireRole("admin"), productController.createProd
  */
 router.put("/:productId", requireAuth, requireRole("admin"), productController.updateProduct);
 
+/**
+ * @swagger
+ * /api/products/bulk/status:
+ *   patch:
+ *     summary: Bulk activate or deactivate products
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - productIds
+ *               - isActive
+ *             properties:
+ *               productIds:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *               isActive:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Products status updated successfully
+ */
+router.patch("/bulk/status", requireAuth, requireRole("admin"), productController.bulkUpdateProductStatus);
+
+/**
+ * @swagger
+ * /api/products/bulk:
+ *   delete:
+ *     summary: Bulk delete products (fails if any product has existing orders)
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - productIds
+ *             properties:
+ *               productIds:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *     responses:
+ *       200:
+ *         description: Products deleted successfully
+ *       409:
+ *         description: One or more products are referenced by existing orders
+ */
+router.delete("/bulk", requireAuth, requireRole("admin"), productController.bulkDeleteProducts);
+
+/**
+ * @swagger
+ * /api/products/{productId}:
+ *   delete:
+ *     summary: Delete a product (fails if the product has existing orders)
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Product deleted successfully
+ *       404:
+ *         description: Product not found
+ *       409:
+ *         description: Product is referenced by existing orders
+ */
+router.delete("/:productId", requireAuth, requireRole("admin"), productController.deleteProduct);
+
 router.use("/:productId/reviews", reviewRoutes);
 
 module.exports = router;

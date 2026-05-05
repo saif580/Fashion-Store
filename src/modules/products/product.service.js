@@ -303,10 +303,69 @@ const uploadProductImages = async (files) => {
   return results;
 };
 
+const deleteProduct = async (productId) => {
+  const product = await productRepository.findProductById(productId);
+  if (!product) {
+    throw createHttpError(404, "Product not found");
+  }
+  try {
+    const result = await productRepository.deleteProduct(productId);
+    await Promise.allSettled(result.publicIds.map((publicId) => deleteCloudinaryAsset(publicId)));
+    return { id: productId };
+  } catch (error) {
+    if (error.code === "23503") {
+      throw createHttpError(409, "Cannot delete product because it is referenced by existing orders");
+    }
+    throw error;
+  }
+};
+
+const normalizeProductIds = (productIds, maxBatch = 100) => {
+  if (!Array.isArray(productIds) || productIds.length === 0) {
+    throw createHttpError(400, "productIds must be a non-empty array");
+  }
+  if (productIds.length > maxBatch) {
+    throw createHttpError(400, `Cannot process more than ${maxBatch} products at once`);
+  }
+  return productIds.map((id) => {
+    const n = Number(id);
+    if (!Number.isInteger(n) || n <= 0) {
+      throw createHttpError(400, "Each productId must be a positive integer");
+    }
+    return n;
+  });
+};
+
+const bulkUpdateProductStatus = async (productIds, isActive) => {
+  const ids = normalizeProductIds(productIds);
+  if (typeof isActive !== "boolean") {
+    throw createHttpError(400, "isActive must be a boolean");
+  }
+  const updatedIds = await productRepository.bulkUpdateProductStatus(ids, isActive);
+  return { updated: updatedIds.length, productIds: updatedIds };
+};
+
+const bulkDeleteProducts = async (productIds) => {
+  const ids = normalizeProductIds(productIds);
+  try {
+    const result = await productRepository.bulkDeleteProducts(ids);
+    await Promise.allSettled(result.publicIds.map((publicId) => deleteCloudinaryAsset(publicId)));
+    return { deleted: result.deletedIds.length, productIds: result.deletedIds };
+  } catch (error) {
+    if (error.code === "23503") {
+      throw createHttpError(409, "Cannot delete one or more products because they are referenced by existing orders");
+    }
+    throw error;
+  }
+};
+
 module.exports = {
   listProducts,
   getProductById,
   createProduct,
   updateProduct,
   uploadProductImages,
+  deleteProduct,
+  bulkUpdateProductStatus,
+  bulkDeleteProducts,
 };

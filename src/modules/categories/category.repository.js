@@ -116,6 +116,14 @@ const updateCategory = async (categoryId, { name, slug, description, parentId, i
   return rows[0] || null;
 };
 
+const deleteCategory = async (categoryId) => {
+  const { rows } = await query(
+    `DELETE FROM categories WHERE id = $1 RETURNING id`,
+    [categoryId],
+  );
+  return rows[0] || null;
+};
+
 module.exports = {
   listCategories,
   findCategoryById,
@@ -123,4 +131,5 @@ module.exports = {
   listCategoryTreeIds,
   createCategory,
   updateCategory,
+  deleteCategory,
 };

@@ -132,6 +132,49 @@ const deleteAddress = async (userId, addressId) => {
   return { message: "Address deleted successfully" };
 };
 
+const ALLOWED_ROLES = ["customer", "admin"];
+
+const adminListUsers = async ({ page, limit, search, role } = {}) => {
+  const p = Math.max(1, parseInt(page) || 1);
+  const l = Math.min(100, Math.max(1, parseInt(limit) || 20));
+
+  if (role != null && !ALLOWED_ROLES.includes(role)) {
+    throw createHttpError(400, `Role must be one of ${ALLOWED_ROLES.join(", ")}`);
+  }
+
+  return userRepository.listUsers({ page: p, limit: l, search: search ?? null, role: role ?? null });
+};
+
+const adminUpdateUserRole = async (adminId, targetUserId, role) => {
+  if (!ALLOWED_ROLES.includes(role)) {
+    throw createHttpError(400, `Role must be one of ${ALLOWED_ROLES.join(", ")}`);
+  }
+
+  if (adminId === targetUserId) {
+    throw createHttpError(400, "You cannot change your own role");
+  }
+
+  const user = await userRepository.findById(targetUserId);
+  if (!user) throw createHttpError(404, "User not found");
+
+  return userRepository.updateUserRole(targetUserId, role);
+};
+
+const adminSetUserActive = async (adminId, targetUserId, isActive) => {
+  if (typeof isActive !== "boolean") {
+    throw createHttpError(400, "isActive must be a boolean");
+  }
+
+  if (adminId === targetUserId) {
+    throw createHttpError(400, "You cannot deactivate your own account");
+  }
+
+  const user = await userRepository.findById(targetUserId);
+  if (!user) throw createHttpError(404, "User not found");
+
+  return userRepository.setUserActive(targetUserId, isActive);
+};
+
 module.exports = {
   getProfile,
   updateProfile,
@@ -139,4 +182,7 @@ module.exports = {
   createAddress,
   updateAddress,
   deleteAddress,
+  adminListUsers,
+  adminUpdateUserRole,
+  adminSetUserActive,
 };

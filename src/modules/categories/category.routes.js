@@ -58,4 +58,22 @@ router.post("/", requireAuth, requireRole("admin"), categoryController.createCat
  */
 router.put("/:categoryId", requireAuth, requireRole("admin"), categoryController.updateCategory);
 
+/**
+ * @swagger
+ * /api/categories/{categoryId}:
+ *   delete:
+ *     summary: Delete a category (fails if it has products assigned to it; child categories are de-parented)
+ *     tags: [Categories]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Category deleted successfully
+ *       404:
+ *         description: Category not found
+ *       409:
+ *         description: Category has products assigned to it
+ */
+router.delete("/:categoryId", requireAuth, requireRole("admin"), categoryController.deleteCategory);
+
 module.exports = router;

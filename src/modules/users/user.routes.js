@@ -115,4 +115,96 @@ router.delete("/addresses/:addressId", requireAuth, userController.deleteAddress
  */
 router.get("/admin/access", requireAuth, requireRole("admin"), userController.getAdminAccess);
 
+/**
+ * @swagger
+ * /api/users/admin/users:
+ *   get:
+ *     summary: List all users (admin)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         schema:
+ *           type: string
+ *         description: Search by name or email
+ *       - in: query
+ *         name: role
+ *         schema:
+ *           type: string
+ *           enum: [customer, admin]
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Users fetched successfully
+ */
+router.get("/admin/users", requireAuth, requireRole("admin"), userController.adminListUsers);
+
+/**
+ * @swagger
+ * /api/users/admin/users/{userId}/role:
+ *   patch:
+ *     summary: Update a user's role (admin)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - role
+ *             properties:
+ *               role:
+ *                 type: string
+ *                 enum: [customer, admin]
+ *     responses:
+ *       200:
+ *         description: User role updated successfully
+ *       400:
+ *         description: Invalid role or cannot change own role
+ *       404:
+ *         description: User not found
+ */
+router.patch("/admin/users/:userId/role", requireAuth, requireRole("admin"), userController.adminUpdateUserRole);
+
+/**
+ * @swagger
+ * /api/users/admin/users/{userId}/active:
+ *   patch:
+ *     summary: Activate or deactivate a user (admin)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - isActive
+ *             properties:
+ *               isActive:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: User status updated successfully
+ *       400:
+ *         description: Cannot deactivate own account
+ *       404:
+ *         description: User not found
+ */
+router.patch("/admin/users/:userId/active", requireAuth, requireRole("admin"), userController.adminSetUserActive);
+
 module.exports = router;

@@ -66,6 +66,46 @@ const getAdminAccess = async (req, res, next) => {
   }
 };
 
+const adminListUsers = async (req, res, next) => {
+  try {
+    const result = await userService.adminListUsers({
+      page: req.query.page,
+      limit: req.query.limit,
+      search: typeof req.query.q === "string" ? req.query.q.trim() : null,
+      role: typeof req.query.role === "string" ? req.query.role.trim() : null,
+    });
+    sendSuccess(res, result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const adminUpdateUserRole = async (req, res, next) => {
+  try {
+    const user = await userService.adminUpdateUserRole(
+      req.user.id,
+      Number(req.params.userId),
+      req.body.role,
+    );
+    sendSuccess(res, user);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const adminSetUserActive = async (req, res, next) => {
+  try {
+    const user = await userService.adminSetUserActive(
+      req.user.id,
+      Number(req.params.userId),
+      req.body.isActive,
+    );
+    sendSuccess(res, user);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getProfile,
   updateProfile,
@@ -74,4 +114,7 @@ module.exports = {
   updateAddress,
   deleteAddress,
   getAdminAccess,
+  adminListUsers,
+  adminUpdateUserRole,
+  adminSetUserActive,
 };

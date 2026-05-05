@@ -87,9 +87,29 @@ const updateCategory = async (categoryId, payload) => {
   return categoryRepository.updateCategory(categoryId, category);
 };
 
+const deleteCategory = async (categoryId) => {
+  const category = await categoryRepository.findCategoryById(categoryId);
+  if (!category) {
+    throw createHttpError(404, "Category not found");
+  }
+  try {
+    const result = await categoryRepository.deleteCategory(categoryId);
+    if (!result) {
+      throw createHttpError(404, "Category not found");
+    }
+    return { id: categoryId };
+  } catch (error) {
+    if (error.code === "23503") {
+      throw createHttpError(409, "Cannot delete category because it has products assigned to it");
+    }
+    throw error;
+  }
+};
+
 module.exports = {
   listCategories,
   getCategoryById,
   createCategory,
   updateCategory,
+  deleteCategory,
 };

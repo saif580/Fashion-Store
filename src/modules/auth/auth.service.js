@@ -83,6 +83,8 @@ const login = async ({ email, password }) => {
   const isPasswordValid = await bcrypt.compare(password, user.password_hash);
   if (!isPasswordValid) throw createHttpError(401, "Invalid email or password");
 
+  if (user.is_active === false) throw createHttpError(403, "Your account has been deactivated");
+
   if (!user.is_email_verified) throw createHttpError(403, "Please verify your email before logging in");
 
   const accessToken = signAccessToken(user);
@@ -105,7 +107,7 @@ const refresh = async (token) => {
   }
 
   const user = await userRepository.findById(payload.id);
-  if (!user) throw createHttpError(401, "User not found");
+  if (!user || user.is_active === false) throw createHttpError(401, "User not found");
 
   const accessToken = signAccessToken(user);
   const refreshToken = signRefreshToken(user);

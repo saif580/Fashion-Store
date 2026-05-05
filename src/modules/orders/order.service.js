@@ -132,9 +132,49 @@ const updateStatus = async (orderId, status) => {
   return orderRepository.updateOrderStatus(parsedId, nextStatus);
 };
 
+const adminListOrders = async ({ page, limit, status, userId, search } = {}) => {
+  const p = Math.max(1, parseInt(page) || 1);
+  const l = Math.min(100, Math.max(1, parseInt(limit) || 20));
+
+  if (status != null && !ORDER_STATUSES.includes(status)) {
+    throw createHttpError(400, `Status must be one of ${ORDER_STATUSES.join(", ")}`);
+  }
+
+  if (userId != null) {
+    const uid = Number(userId);
+    if (!Number.isInteger(uid) || uid <= 0) {
+      throw createHttpError(400, "userId must be a positive integer");
+    }
+  }
+
+  return orderRepository.listAllOrders({
+    page: p,
+    limit: l,
+    status: status ?? null,
+    userId: userId != null ? Number(userId) : null,
+    search: search ?? null,
+  });
+};
+
+const adminGetOrderById = async (orderId) => {
+  const parsedId = Number(orderId);
+  if (!Number.isInteger(parsedId) || parsedId <= 0) {
+    throw createHttpError(400, "Order id must be a positive integer");
+  }
+
+  const order = await orderRepository.findOrderByIdAdmin(parsedId);
+  if (!order) {
+    throw createHttpError(404, "Order not found");
+  }
+
+  return order;
+};
+
 module.exports = {
   placeOrder,
   listOrders,
   getOrderById,
   updateStatus,
+  adminListOrders,
+  adminGetOrderById,
 };

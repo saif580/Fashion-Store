@@ -68,10 +68,40 @@ const uploadProductImages = async (req, res, next) => {
   }
 };
 
+const deleteProduct = async (req, res, next) => {
+  try {
+    const result = await productService.deleteProduct(Number(req.params.productId));
+    sendSuccess(res, result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const bulkUpdateProductStatus = async (req, res, next) => {
+  try {
+    const result = await productService.bulkUpdateProductStatus(req.body.productIds, req.body.isActive);
+    sendSuccess(res, result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const bulkDeleteProducts = async (req, res, next) => {
+  try {
+    const result = await productService.bulkDeleteProducts(req.body.productIds);
+    sendSuccess(res, result);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   listProducts,
   getProductById,
   createProduct,
   updateProduct,
   uploadProductImages,
+  deleteProduct,
+  bulkUpdateProductStatus,
+  bulkDeleteProducts,
 };

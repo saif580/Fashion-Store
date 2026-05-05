@@ -489,10 +489,49 @@ const updateProduct = async (productId, { categoryId, name, slug, description, b
   }
 };
 
+const deleteProduct = async (productId) => {
+  const { rows: images } = await query(
+    `SELECT cloudinary_public_id FROM product_images WHERE product_id = $1 AND cloudinary_public_id IS NOT NULL`,
+    [productId],
+  );
+  const { rows } = await query(
+    `DELETE FROM products WHERE id = $1 RETURNING id`,
+    [productId],
+  );
+  if (!rows[0]) return null;
+  return { id: rows[0].id, publicIds: images.map((i) => i.cloudinary_public_id) };
+};
+
+const bulkUpdateProductStatus = async (productIds, isActive) => {
+  const { rows } = await query(
+    `UPDATE products SET is_active = $1, updated_at = NOW() WHERE id = ANY($2::int[]) RETURNING id`,
+    [isActive, productIds],
+  );
+  return rows.map((r) => r.id);
+};
+
+const bulkDeleteProducts = async (productIds) => {
+  const { rows: images } = await query(
+    `SELECT cloudinary_public_id FROM product_images WHERE product_id = ANY($1::int[]) AND cloudinary_public_id IS NOT NULL`,
+    [productIds],
+  );
+  const { rows } = await query(
+    `DELETE FROM products WHERE id = ANY($1::int[]) RETURNING id`,
+    [productIds],
+  );
+  return {
+    deletedIds: rows.map((r) => r.id),
+    publicIds: images.map((i) => i.cloudinary_public_id),
+  };
+};
+
 module.exports = {
   listProducts,
   findProductById,
   findProductBySlug,
   createProduct,
   updateProduct,
+  deleteProduct,
+  bulkUpdateProductStatus,
+  bulkDeleteProducts,
 };

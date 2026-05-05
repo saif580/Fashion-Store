@@ -97,6 +97,10 @@ const initializeDatabase = async () => {
   `);
 
   await query(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE;
+  `);
+
+  await query(`
     CREATE TABLE IF NOT EXISTS user_addresses (
       id SERIAL PRIMARY KEY,
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

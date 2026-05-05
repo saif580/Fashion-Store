@@ -577,10 +577,72 @@ const updateOrderStatus = async (orderId, status) => {
   return order;
 };
 
+const listAllOrders = async ({ page = 1, limit = 20, status = null, userId = null, search = null } = {}) => {
+  const clauses = [];
+  const params = [];
+  const addParam = (v) => { params.push(v); return `$${params.length}`; };
+
+  if (status) clauses.push(`o.status = ${addParam(status)}`);
+  if (userId) clauses.push(`o.user_id = ${addParam(userId)}`);
+  if (search) {
+    const likeToken = addParam(`%${search}%`);
+    clauses.push(`(o.order_number ILIKE ${likeToken} OR u.email ILIKE ${likeToken} OR u.name ILIKE ${likeToken})`);
+  }
+
+  const whereClause = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
+  const offset = (page - 1) * limit;
+  const countParams = [...params];
+  const listParams = [...params, limit, offset];
+
+  const [countResult, rowsResult] = await Promise.all([
+    query(
+      `SELECT COUNT(*) FROM orders o JOIN users u ON u.id = o.user_id ${whereClause}`,
+      countParams,
+    ),
+    query(
+      `SELECT ${orderSelectColumns}, u.name AS user_name, u.email AS user_email
+       FROM orders o
+       JOIN users u ON u.id = o.user_id
+       ${whereClause}
+       ORDER BY o.created_at DESC
+       LIMIT $${listParams.length - 1} OFFSET $${listParams.length}`,
+      listParams,
+    ),
+  ]);
+
+  const total = Number(countResult.rows[0].count);
+  const rawRows = rowsResult.rows;
+  const userInfoById = new Map(rawRows.map((r) => [r.id, { name: r.user_name, email: r.user_email }]));
+  const orders = (await hydrateOrders(rawRows)).map((order) => ({
+    ...order,
+    user: userInfoById.get(order.id) ?? null,
+  }));
+
+  return {
+    orders,
+    pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+  };
+};
+
+const findOrderByIdAdmin = async (orderId) => {
+  const { rows } = await query(
+    `SELECT ${orderSelectColumns}, u.name AS user_name, u.email AS user_email
+     FROM orders o
+     JOIN users u ON u.id = o.user_id
+     WHERE o.id = $1`,
+    [orderId],
+  );
+  if (!rows[0]) return null;
+  const [order] = await hydrateOrders(rows);
+  return { ...order, user: { name: rows[0].user_name, email: rows[0].user_email } };
+};
+
 module.exports = {
   createOrderFromCart,
   listOrdersByUserId,
   findOrderById,
   findOrderByIdForUser,
   updateOrderStatus,
+  listAllOrders,
+  findOrderByIdAdmin,
 };
