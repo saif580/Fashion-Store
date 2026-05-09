@@ -3,7 +3,60 @@ const razorpay = require("../../config/razorpay");
 const { razorpayKeyId, razorpayKeySecret, razorpayWebhookSecret } = require("../../config/env");
 const paymentRepository = require("./payment.repository");
 const orderRepository = require("../orders/order.repository");
+const userRepository = require("../users/user.repository");
+const { sendMail } = require("../../utils/email");
 const { createHttpError } = require("../../utils/httpError");
+
+const buildPaymentSuccessHtml = ({ order, user, payment }) => {
+  const rows = order.items
+    .map(
+      (item) => `
+        <tr>
+          <td style="padding:8px 0;">${item.product_name} (${item.variant_color}/${item.variant_size})</td>
+          <td style="padding:8px 0; text-align:center;">${item.quantity}</td>
+          <td style="padding:8px 0; text-align:right;">Rs. ${item.line_total.toFixed(2)}</td>
+        </tr>`,
+    )
+    .join("");
+
+  return `
+    <div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto;color:#222;">
+      <h2>Payment successful</h2>
+      <p>Hi ${user.first_name || user.name},</p>
+      <p>We've received your payment and confirmed order <strong>${order.order_number}</strong>.</p>
+      <table style="width:100%;border-collapse:collapse;">
+        <thead>
+          <tr>
+            <th style="text-align:left;padding:8px 0;border-bottom:1px solid #ddd;">Item</th>
+            <th style="text-align:center;padding:8px 0;border-bottom:1px solid #ddd;">Qty</th>
+            <th style="text-align:right;padding:8px 0;border-bottom:1px solid #ddd;">Total</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <p style="margin-top:16px;"><strong>Paid:</strong> Rs. ${(Number(payment.amount_paise) / 100).toFixed(2)}</p>
+      <p><strong>Shipping to:</strong><br/>${order.shipping_address.full_name}<br/>${order.shipping_address.address_line_1}${order.shipping_address.address_line_2 ? `<br/>${order.shipping_address.address_line_2}` : ""}<br/>${order.shipping_address.city}, ${order.shipping_address.state} ${order.shipping_address.postal_code}<br/>${order.shipping_address.country}</p>
+    </div>
+  `;
+};
+
+const sendPaymentSuccessEmail = async (orderId, payment) => {
+  const order = await orderRepository.findOrderById(orderId);
+  if (!order) return;
+
+  const user = await userRepository.findById(order.user_id);
+  if (!user) return;
+
+  try {
+    await sendMail({
+      to: user.email,
+      subject: `Payment successful - ${order.order_number}`,
+      html: buildPaymentSuccessHtml({ order, user, payment }),
+    });
+  } catch (error) {
+    console.error("Failed to send payment success email", error);
+  }
+};
 
 const createOrder = async (userId, orderId) => {
   const parsedId = Number(orderId);
@@ -72,8 +125,9 @@ const verifyPayment = async (userId, { razorpayOrderId, razorpayPaymentId, razor
     throw createHttpError(400, "Payment signature is invalid");
   }
 
-  await paymentRepository.markPaymentPaid(razorpayOrderId, razorpayPaymentId, razorpaySignature, null);
+  const paidPayment = await paymentRepository.markPaymentPaid(razorpayOrderId, razorpayPaymentId, razorpaySignature, null);
   await orderRepository.updateOrderStatus(payment.order_id, "confirmed");
+  await sendPaymentSuccessEmail(payment.order_id, paidPayment);
 
   return { message: "Payment verified successfully", order_id: payment.order_id };
 };
@@ -102,8 +156,9 @@ const handleWebhook = async (rawBody, signature) => {
   if (event.event === "payment.captured") {
     const payment = await paymentRepository.findPaymentByRazorpayOrderId(razorpayOrderId);
     if (payment && payment.status !== "paid") {
-      await paymentRepository.markPaymentPaid(razorpayOrderId, entity.id, null, entity.method);
+      const paidPayment = await paymentRepository.markPaymentPaid(razorpayOrderId, entity.id, null, entity.method);
       await orderRepository.updateOrderStatus(payment.order_id, "confirmed");
+      await sendPaymentSuccessEmail(payment.order_id, paidPayment);
     }
   }
 

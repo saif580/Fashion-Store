@@ -82,6 +82,7 @@
 - [x] POST /api/payments/create-order — initiate Razorpay order for a pending order
 - [x] POST /api/payments/verify — verify HMAC signature, confirm order
 - [x] POST /api/payments/webhook — handle payment.captured / payment.failed events
+- [x] Send payment success email after verified/captured Razorpay payment
 - [ ] Configure RAZORPAY_WEBHOOK_SECRET and register webhook URL in Razorpay dashboard
 
 ## Coupons & Discounts
