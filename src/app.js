@@ -6,7 +6,15 @@ const { swaggerSpec, swaggerUi } = require("./config/swagger");
 
 const app = express();
 
-app.use(express.json());
+app.use(
+  express.json({
+    verify: (req, _res, buf) => {
+      if (req.originalUrl === "/api/payments/webhook") {
+        req.rawBody = Buffer.from(buf);
+      }
+    },
+  }),
+);
 
 if (process.env.APP_ENV !== "prod") {
   app.get("/api-docs.json", (req, res) => res.json(swaggerSpec));

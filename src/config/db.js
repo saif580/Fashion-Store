@@ -600,6 +600,39 @@ const initializeDatabase = async () => {
     CREATE INDEX IF NOT EXISTS idx_product_reviews_product_id
     ON product_reviews (product_id, created_at DESC);
   `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS order_payments (
+      id SERIAL PRIMARY KEY,
+      order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+      razorpay_order_id VARCHAR(100) NOT NULL UNIQUE,
+      razorpay_payment_id VARCHAR(100) UNIQUE,
+      razorpay_signature TEXT,
+      amount_paise BIGINT NOT NULL,
+      currency VARCHAR(10) NOT NULL DEFAULT 'INR',
+      status VARCHAR(20) NOT NULL DEFAULT 'created',
+      method VARCHAR(50),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await query(`
+    DO $$ BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger WHERE tgname = 'trg_order_payments_updated_at'
+      ) THEN
+        CREATE TRIGGER trg_order_payments_updated_at
+        BEFORE UPDATE ON order_payments
+        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+      END IF;
+    END $$;
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_order_payments_order_id
+    ON order_payments (order_id);
+  `);
 };
 
 module.exports = {

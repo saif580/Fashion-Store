@@ -33,4 +33,7 @@ module.exports = {
   cloudinaryCloudName: require_env("CLOUDINARY_CLOUD_NAME"),
   cloudinaryApiKey: require_env("CLOUDINARY_API_KEY"),
   cloudinaryApiSecret: require_env("CLOUDINARY_API_SECRET"),
+  razorpayKeyId: require_env("RAZORPAY_KEY_ID"),
+  razorpayKeySecret: require_env("RAZORPAY_KEY_SECRET"),
+  razorpayWebhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET || "",
 };

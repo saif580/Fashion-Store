@@ -8,6 +8,7 @@ const orderRoutes = require("../modules/orders/order.routes");
 const userRoutes = require("../modules/users/user.routes");
 const authRoutes = require("../modules/auth/auth.routes");
 const wishlistRoutes = require("../modules/wishlist/wishlist.routes");
+const paymentRoutes = require("../modules/payments/payment.routes");
 
 const router = express.Router();
 
@@ -20,5 +21,6 @@ router.use("/orders", orderRoutes);
 router.use("/users", userRoutes);
 router.use("/auth", authRoutes);
 router.use("/wishlist", wishlistRoutes);
+router.use("/payments", paymentRoutes);
 
 module.exports = router;

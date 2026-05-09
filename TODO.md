@@ -77,11 +77,12 @@
 
 ## Payments
 
-- [ ] Choose payment provider (Stripe recommended)
-- [ ] Add payment initiation API
-- [ ] Add payment callback/webhook handling
-- [ ] Add payment status persistence (orders_payments table)
-- [ ] Handle payment failure and retry
+- [x] Choose payment provider (Razorpay)
+- [x] Create order_payments table
+- [x] POST /api/payments/create-order — initiate Razorpay order for a pending order
+- [x] POST /api/payments/verify — verify HMAC signature, confirm order
+- [x] POST /api/payments/webhook — handle payment.captured / payment.failed events
+- [ ] Configure RAZORPAY_WEBHOOK_SECRET and register webhook URL in Razorpay dashboard
 
 ## Coupons & Discounts
 
